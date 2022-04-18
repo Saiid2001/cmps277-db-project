@@ -7,7 +7,7 @@ import Main from "./pages/Main/Main";
 
 import {
   BrowserRouter as Router,
-  Switch,
+  Routes,
   Route,
   Link
 } from "react-router-dom";
@@ -24,17 +24,19 @@ function App() {
       <div>
         {/* A <Switch> looks through its children <Route>s and
             renders the first one that matches the current URL. */}
-        <Switch>
-          <Route path="/signup/mentor">
-            <Signup type={"mentor"}></Signup>
+        <Routes>
+          <Route path="/signup/mentor" element={<Signup type={"mentor"}></Signup>}>
+            
           </Route>
-          <Route path="/signup/seeker">
-            <Signup type={"seeker"}></Signup>
+          <Route path="/signup/seeker" element={
+            <Signup type={"seeker"}></Signup>}>
           </Route>
-          <Route path="/">
-            {user?<UserContext.Provider value={user}><Main user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>}
-          </Route>
-        </Switch>
+          <Route path="/" element={
+user?<UserContext.Provider value={user}><Main user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+
+          }>
+            </Route>
+        </Routes>
       </div>
     </Router>
     </div>
