@@ -1,0 +1,57 @@
+.signup{
+    height: 100%;
+    padding-top: 10rem;
+    background-image: url("../../assets/img/bg-signup.png");
+    background-repeat: repeat-x;
+    background-position: bottom;
+    background-attachment:fixed;
+    box-sizing: border-box;
+}
+
+body{
+    margin:0;
+}
+
+.signup{
+
+    main{
+        position:absolute;
+        top:0rem;
+        left: 10rem;
+
+    }
+
+    h1{
+        font-weight: bold;
+        font-size: 44px;
+    }
+
+    h2{
+        font-weight: normal;
+    }
+
+    section{
+        display: flex;
+        flex-direction: column;
+        gap:0.5rem;
+    }
+
+    form{
+        display: flex;
+        flex-direction: column;
+        gap:1rem;
+    }
+    .logo{
+        position:fixed;
+        top:0;
+        right:0;
+        margin: 2rem;
+    }
+
+    .bg-img{
+        position: fixed;
+        bottom:10px;
+        right:10px;
+    }
+
+}
