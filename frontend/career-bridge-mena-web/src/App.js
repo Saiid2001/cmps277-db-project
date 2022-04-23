@@ -31,10 +31,73 @@ function App() {
           <Route path="/signup/seeker" element={
             <Signup type={"seeker"}></Signup>}>
           </Route>
-          <Route path="/" element={
-user?<UserContext.Provider value={user}><Main user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          <Route path={"/"}>
 
+          <Route path=""  element={
+user?<UserContext.Provider  value={user}><Main tab={"profile"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
           }>
+            </Route>
+
+            <Route path="/users"  element={
+user?<UserContext.Provider  value={user}><Main tab={"users"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }>
+            </Route>
+
+            <Route path="/users/details/:uid"  element={
+user?<UserContext.Provider  value={user}><Main tab={"profile-other"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+            </Route>
+            <Route path={"/fields"} >
+            <Route path="" element={
+user?<UserContext.Provider value={user}><Main tab={"fields"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }>
+            </Route>
+            <Route path="add" element={
+user?<UserContext.Provider value={user}><Main tab={"new-field"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+            <Route path="edit" element={
+user?<UserContext.Provider value={user}><Main tab={"edit-field"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+            </Route>
+
+            <Route path={"/organizations"} >
+            <Route path="" element={
+user?<UserContext.Provider value={user}><Main tab={"organizations"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }>
+            </Route>
+            <Route path="add" element={
+user?<UserContext.Provider value={user}><Main tab={"new-organization"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+<Route path="edit" element={
+user?<UserContext.Provider value={user}><Main tab={"edit-organization"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+          <Route path="details/:orgID" element={
+user?<UserContext.Provider value={user}><Main tab={"details-organization"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+          </Route>
+
+
+<Route path={"/opportunities"} >
+            <Route path="" element={
+user?<UserContext.Provider value={user}><Main tab={"opportunities"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }>
+            </Route>
+            <Route path="add" element={
+user?<UserContext.Provider value={user}><Main tab={"new-opportunity"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+<Route path="edit" element={
+user?<UserContext.Provider value={user}><Main tab={"edit-opportunity"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
+<Route path="details/:oppID" element={
+user?<UserContext.Provider value={user}><Main tab={"details-opportunity"} user={user}></Main></UserContext.Provider>:<Login onLogin={setUser}></Login>
+          }></Route>
+
             </Route>
         </Routes>
       </div>
