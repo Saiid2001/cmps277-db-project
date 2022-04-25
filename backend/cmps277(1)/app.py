@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, redirect,jsonify
+from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flaskext.mysql import MySQL
 from datetime import date
 import json
 
 app = Flask(__name__)
+api = Api(app)
 
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 app.config['MYSQL_DATABASE_USER'] = 'root'
