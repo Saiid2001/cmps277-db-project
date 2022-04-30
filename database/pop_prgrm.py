@@ -4,6 +4,11 @@ from msilib.schema import ServiceInstall
 from random import randint, random, choice
 import mysql.connector
 
+from faker import Faker
+
+faker = Faker()
+
+
 majors = [
 	"Animal Sciences",
 	"Food Sciences & Technology",
@@ -38,53 +43,38 @@ majors = [
 	"Psychology, Clinical & Counseling",
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_prgrm(mydb):
+	mycursor = mydb.cursor()
 
-mycursor.execute("SELECT email FROM User")
+	mycursor.execute("SELECT email FROM User")
 
-emails = mycursor.fetchall()
+	emails = mycursor.fetchall()
 
-mycursor.execute("SELECT oemail FROM Organization Where is_educational = true")
+	mycursor.execute("SELECT oemail FROM Organization Where is_educational = true")
 
-Orgs = mycursor.fetchall()
+	Orgs = mycursor.fetchall()
 
-for em in emails:
-	cmp = randint(0,100)
-	if cmp % 3 != 0:
-		email = em[0]
-		org = choice(Orgs)[0]
-		is_complete = randint(0,1)
-		major = choice(majors)
-		score = randint(0,10)
+	count = 0
+	for em in emails:
+		cmp = randint(0,100)
+		if cmp % 3 != 0:
+			email = em[0]
+			org = choice(Orgs)[0]
+			is_complete = randint(0,1)
+			major = choice(majors)
+			score = randint(0,10)
 
+			start_date = str(faker.date_between(start_date="-10y", end_date="-4y"))
+			end_date = str(faker.date_between(start_date="-4y", end_date="today"))
 
-		end_day = randint(1,29)
-		end_month = randint(1,12)
-		end_year = randint(2019 , 2022)
-		start_day = randint(1,29)
-		start_month = randint(1,12)
-		start_year = randint(2010,2018)
-
-		start_date = str(start_year) + "-" + str(start_month) + "-" + str(start_day) 
-		end_date = str(end_year) + "-" + str(end_month) + "-" + str(end_day)
-
-
-		mySql_insert_query = "INSERT INTO Complete_program VALUES (Null,'" + org + "','" + email + "','" + start_date + "','" + end_date + "'," + str(score) + ",'" + major + "'," + str(is_complete) + ")"
-		cursor = mydb.cursor()
-		cursor.execute(mySql_insert_query)
-		mydb.commit()
-		print(cursor.rowcount, "Record inserted successfully into Complete_program table")
-		cursor.close()
-        
-
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+			mySql_insert_query = "INSERT INTO Complete_program VALUES (Null,'" + org + "','" + email + "','" + start_date + "','" + end_date + "'," + str(score) + ",'" + major + "'," + str(is_complete) + ")"
+			cursor = mydb.cursor()
+			cursor.execute(mySql_insert_query)
+			mydb.commit()
+			cursor.close()
+			count +=1
+			
+	print(count, "Record inserted successfully into Complete_program table")
+			
 

@@ -1,7 +1,11 @@
 from calendar import month
 from msilib.schema import ServiceInstall
-from random import randint, random
+from random import randint, random, sample
 import mysql.connector
+
+from faker import Faker
+
+faker = Faker()
 
 positions = [
     "Accountant",
@@ -73,53 +77,37 @@ positions = [
     "Preschool Teacher"
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_exp(mydb):
+    mycursor = mydb.cursor()
 
-mycursor.execute("SELECT uemail FROM Alumnus")
+    mycursor.execute("SELECT uemail FROM Alumnus")
 
-emails = mycursor.fetchall()
+    emails = mycursor.fetchall()
 
-mycursor.execute("SELECT oemail FROM Organization")
+    mycursor.execute("SELECT oemail FROM Organization")
 
-Orgs = mycursor.fetchall()
+    Orgs = mycursor.fetchall()
 
-for em in emails:
-    email = em[0]
-    num = randint(1,3)
-    orgs = []
-    for i in range(num):
-        org = randint(0, len(Orgs) - 1)
-        if org in orgs:
-            continue
-        else:
-            orgs.append(org)
+    count = 0
+    
+    for em in emails:
+        email = em[0]
+        num = randint(1,3)
+        orgs = sample(Orgs, k=num)
+
+        for org in orgs:
             pos = positions[randint(0, len(positions) - 1)]
 
-            end_day = randint(1,29)
-            end_month = randint(1,12)
-            end_year = randint(2018 , 2022)
-            start_day = randint(1,29)
-            start_month = randint(1,12)
-            start_year = randint(2010,2018)
+            start_date = str(faker.date_between(start_date="-10y", end_date="-4y"))
+            end_date = str(faker.date_between(start_date="-4y", end_date="today"))
 
-            start_date = str(start_year) + "-" + str(start_month) + "-" + str(start_day) 
-            end_date = str(end_year) + "-" + str(end_month) + "-" + str(end_day)
-
-            mySql_insert_query = "INSERT INTO Experience VALUES (Null,'" + pos + "','" + start_date + "','" + end_date + "','" + email + "','" + Orgs[org][0] + "')"
+            mySql_insert_query = "INSERT INTO Experience VALUES (Null,'" + pos + "','" + start_date + "','" + end_date + "','" + email + "','" + org[0] + "')"
             cursor = mydb.cursor()
             cursor.execute(mySql_insert_query)
             mydb.commit()
-            print(cursor.rowcount, "Record inserted successfully into Experience table")
             cursor.close()
+            count +=1
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
-
+    print(count, "Record inserted successfully into Experience table")
+           

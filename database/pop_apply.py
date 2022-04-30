@@ -1,44 +1,38 @@
 from calendar import month
 from msilib.schema import ServiceInstall
-from random import randint, random
+from random import randint, random, sample
 import mysql.connector
 
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_apply(mydb):
+    mycursor = mydb.cursor()
 
-mycursor.execute("SELECT uemail FROM Student")
+    mycursor.execute("SELECT uemail FROM Student")
 
-emails = mycursor.fetchall()
+    emails = mycursor.fetchall()
 
-mycursor.execute("SELECT id FROM Opportunity")
+    mycursor.execute("SELECT id FROM Opportunity")
 
-opportunities = mycursor.fetchall()
+    opportunities = mycursor.fetchall()
 
-for em in emails:
-    email = em[0]
-    num = randint(1,5)
-    opps = []
-    for i in range(num):
-        opp = randint(0, len(opportunities) - 1)
-        if opp in opps:
-            continue
-        else:
-            opps.append(opp)
-            mySql_insert_query = "INSERT INTO apply VALUES ('" + email + "'," + str(opportunities[opp][0]) + ")"
+    count = 0
+    for user in emails:
+        email = user[0]
+        query = "SELECT id FROM opportunity as op where opp_field in(SELECT ofname from will_to_work where semail='"+email+"')"
+        mycursor.execute(query)
+        opps = mycursor.fetchall()
+        for opp in sample(opps, k=min(randint(1,3), len(opps))):
+            opp_id = str(opp[0])
+            mySql_insert_query = "INSERT INTO apply VALUES ('" + email + "'," + opp_id + ")"
             cursor = mydb.cursor()
             cursor.execute(mySql_insert_query)
             mydb.commit()
-            print(cursor.rowcount, "Record inserted successfully into apply table")
             cursor.close()
+            count +=1
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+    print(count, "Record inserted successfully into apply table")
+            
+
+
 

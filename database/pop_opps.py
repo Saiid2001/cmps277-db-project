@@ -1,6 +1,9 @@
 from calendar import month
 from random import randint, random
 import mysql.connector
+from faker import Faker
+
+faker = Faker()
 
 locations = ["Moldova"
 ,"Jordan"
@@ -43,30 +46,28 @@ opps = [
 
 description = "This opportunity offers a lot for its beneficiaries including .... and .... and ..... It also encourages all students and alumni to connect and form a special network that will help expand the effects of this opportunity on the whole world and guarantee its continuity for years to come."
 
-comp_types = ["Paid" , "Reimbursed", "Partial"]
+comp_types = ['hourly', 'monthly', 'per-task', 'final-sum']
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_opportunities(mydb):
 
-mycursor.execute("SELECT uemail FROM Alumnus")
+  mycursor = mydb.cursor()
 
-Aemails = mycursor.fetchall()
+  mycursor.execute("SELECT uemail FROM Alumnus")
 
-mycursor.execute("SELECT oemail FROM Organization")
+  Aemails = mycursor.fetchall()
 
-Oemails = mycursor.fetchall()
+  mycursor.execute("SELECT oemail FROM Organization")
 
-mycursor.execute("SELECT ofname FROM Opportunity_Field")
+  Oemails = mycursor.fetchall()
 
-OFnames = mycursor.fetchall()
+  mycursor.execute("SELECT ofname FROM Opportunity_Field")
 
-for opportunity in opps:
+  OFnames = mycursor.fetchall()
+
+  count = 0
+
+  for opportunity in opps:
     alum = Aemails[randint(0, len(Aemails) - 1)][0]
     org = Oemails[randint(0, len(Oemails) - 1)][0]
     of = OFnames[randint(0, len(OFnames) - 1)][0]
@@ -76,28 +77,21 @@ for opportunity in opps:
     comptype = comp_types[randint(0,2)]
     compamount = randint(1000,200000)
 
-    app_dead_month = randint(1,8)
-    end_month = randint(1,12)
-    end_year = randint(2026 , 2030)
-    start_day = randint(1,29)
-    start_month = randint(10,12)
-    year = randint(2022,2025)
-
-    deadline = str(year) + "-" + str(app_dead_month) + "-" + str(start_day) 
-    start_date = str(year) + "-" + str(start_month) + "-" + str(start_day) 
-    end_date = str(end_year) + "-" + str(end_month) + "-" + str(start_day)
-
+    deadline = str(faker.date_between(start_date="+1m", end_date="+4m") )
+    start_date =str(faker.date_between(start_date="+4m", end_date="+1y") )
+    end_date = str(faker.date_between(start_date="+2y", end_date="+5y") )
+    
     portal = opportunity.replace("in", "")
     portal = opportunity.replace("at", "")
     portal = "opportunities.net/" + portal.replace(" " , "-")
-    mySql_insert_query = "INSERT INTO Opportunity VALUES (NULL,'" + org + "','" + opportunity + "','" + location + "','" + start_date + "','" + end_date + "','" + portal + "'," + str(compamount) + ",'" + comptype + "','" + description + "','" + deadline + "','" + of + "','" + alum + "')"
+    mySql_insert_query = "INSERT INTO Opportunity VALUES (NULL,'" + org + "','" + opportunity + "','" + location + "','" + start_date + "','" + end_date + "','" + portal + "'," + str(compamount) + ",'" + comptype + "','" + faker.paragraph(300) + "','" + deadline + "','" + of + "','" + alum + "')"
     cursor = mydb.cursor()
     cursor.execute(mySql_insert_query)
     mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into Opportunity table")
     cursor.close()
+    count +=1
+  
+  print(count, "Record inserted successfully into Opportunity table")
+    
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
 

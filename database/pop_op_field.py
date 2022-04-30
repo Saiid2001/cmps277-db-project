@@ -21,26 +21,22 @@ description = [
     "Urban planning, also known as regional planning, town planning, city planning, or rural planning, is a technical and political process that is focused on the development and design of land use and the built environment, including air, water, and the infrastructure passing into and out of urban areas, such as transportation, communications, and distribution networks and their accessibility.[1] Traditionally, urban planning followed a top-down approach in master planning the physical layout of human settlements.[2] The primary concern was the public welfare,[1][2] which included considerations of efficiency, sanitation, protection and use of the environment,[1] as well as effects of the master plans on the social and economic activities.[3] Over time, urban planning has adopted a focus on the social and environmental bottom-lines that focus on planning as a tool to improve the health and well-being of people while maintaining sustainability standards. Sustainable development was added as one of the main goals of all planning endeavors in the late 20th century when the detrimental economic and the environmental impacts of the previous models of planning had become apparent.[citation needed] Similarly, in the early 21st century, Jane Jacobs writings on legal and political perspectives to emphasize the interests of residents, businesses and communities effectively influenced urban planners to take into broader consideration of resident experiences and needs while planning. ",
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_op_field(connection):
 
+    mycursor = connection.cursor()
 
-for i in range(6):
+    count = 0
+    for i in range(6):
 
-    mySql_insert_query = "INSERT INTO Opportunity_Field VALUES ('" + opp_fields[i] + "','" + description[i] + "')"
-    cursor = mydb.cursor()
-    cursor.execute(mySql_insert_query)
-    mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into Opportunity_Field table")
-    cursor.close()
+        mySql_insert_query = "INSERT INTO Opportunity_Field VALUES ('" + opp_fields[i] + "','" + description[i] + "')"
+        cursor = connection.cursor()
+        cursor.execute(mySql_insert_query)
+        connection.commit()
+        cursor.close()
+        count +=1
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+    print(count, "Record inserted successfully into Opportunity_Field table")
+        
+
 

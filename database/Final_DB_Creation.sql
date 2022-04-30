@@ -1,6 +1,6 @@
-Create Schema Project;
+Drop Schema Project;
 
--- Drop Schema Project;
+Create Schema Project;
 
 Use Project;
 
@@ -22,7 +22,7 @@ Create Table User(
     email Varchar(200) NOT NULL unique primary key,
     linked_in Varchar(200),
     phone Varchar(20),
-    age int,
+    dob date not null,
     website Varchar(100),
     gender Varchar(6)
 );
@@ -31,7 +31,7 @@ Create unique index full_name on User (fname, lname);
 
 Create Table Student(
     uemail Varchar(200) NOT NULL,
-    sop Varchar(4000),
+    sop text,
     is_open_work Boolean,
     Foreign key (uemail) references User(email) On delete cascade
 );
@@ -45,7 +45,7 @@ Create Table alumnus(
     Foreign key (work_email) references Organization(oemail)On delete cascade
 );
 
-Create  index workplace on alumnus(work_email);
+Create index workplace on alumnus(work_email);
 
 Create Table Opportunity_Field(
 	ofname Varchar(100) Not Null Primary Key,
@@ -76,7 +76,7 @@ Create index student_email on Skills (semail);
 Create Table Projects(
 	date Date,
     name Varchar(200) Not NULL,
-    description Varchar(3000),
+    description text,
     semail Varchar(200) NOT NULL,
     Foreign key (semail) references Student(uemail) On delete cascade,
     Primary Key(semail, name)
@@ -105,7 +105,7 @@ Create Table Opportunity(
         app_portal Varchar(300),
         comp_amount int,
         comp_type Varchar(50),
-        description Varchar(3000),
+        description text,
         app_deadline Date,
         opp_field Varchar(100),
         alemail Varchar(200) NOT NULL,
@@ -115,7 +115,13 @@ Create Table Opportunity(
         Foreign Key(alemail) references Alumnus(uemail)
 );
 
-Create unique index opp_info on Opportunity (alemail, opp_field, hosting_email);
+Create VIEW opp_info As
+    SELECT
+        alemail,
+        opp_field, 
+        hosting_email
+    FROM 
+        opportunity;
 
 Create Table benefits(
 	opp_id int,
@@ -175,8 +181,6 @@ Create Table Complete_program(
     Foreign key (uemail) references User(email) On delete cascade
 );
 
-Create index user_institute on Complete_program(uemail, inst_email)  ;
-
 Create Table prg_accomplishments(
 	prg_id int Not Null,
     Foreign key (prg_id) references Complete_program(id) On delete cascade,
@@ -206,7 +210,3 @@ Create Table Associate(
     Foreign Key (opp_id) References opportunity(id),
     Primary Key(alemail, opp_id)
 );
-
--- Delete from Complete_program;
-
-Select * from Associate;

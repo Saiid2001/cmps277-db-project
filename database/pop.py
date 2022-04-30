@@ -1,7 +1,11 @@
 import json
-from random import random
+from random import randint, random
 import mysql.connector
 from mysql.connector import Error
+from datetime import datetime
+from faker import Faker
+
+faker = Faker() 
 
 # Opening JSON file
 f = open('first_names.json')
@@ -26,36 +30,32 @@ f.close()
 c.close()
 
 
-try:
-    connection = mysql.connector.connect(host='localhost',
-                                         database='project',
-                                         user='Nas',
-                                         password='Sanasaida123')
+def pop_users(connection):
 
-    for i in range(100):
-        fname = first_names[i]
-        lname = last_names[i]
-        email = fname + "." + lname + "@gmail.com"
-        linked_in = fname + "-" + lname
-        age = random() * 80 + 20
-        gender = "Female"
-        website = fname + "git.com"
-        phone = "71775923" 
-        mySql_insert_query = "INSERT INTO User VALUES ('" + fname +"','" + lname + "','" + email + "','" + linked_in + "','" + phone + "', " + str(age) + ",'" + website + "','" + gender + "')"
+    try:
+        count = 0
+        for i in range(100):
+            fname = first_names[i]
+            lname = last_names[i]
+            email = fname + "." + lname + "@gmail.com"
+            email = email.lower()
+            linked_in = fname + "-" + lname
+            dob = faker.date_between(start_date="-30y", end_date="-18y")
+            gender = "Male" if randint(0,1)==1 else "Female"
+            website = fname + "git.com"
+            phone = "71775923" 
+            mySql_insert_query = "INSERT INTO User VALUES ('" + fname +"','" + lname + "','" + email + "','" + linked_in + "','" + phone + "', '" + str(dob) + "','" + website + "','" + gender + "')"
 
+            cursor = connection.cursor()
+            cursor.execute(mySql_insert_query)
+            connection.commit()
+            cursor.close()
+            count +=1
 
-        cursor = connection.cursor()
-        cursor.execute(mySql_insert_query)
-        connection.commit()
-        print(cursor.rowcount, "Record inserted successfully into User table")
-        cursor.close()
+        print(count, "Record inserted successfully into User table")
+            
 
-except mysql.connector.Error as error:
-    print("Failed to insert record into User table {}".format(error))
-
-finally:
-    if connection.is_connected():
-        connection.close()
-        print("MySQL connection is closed")
+    except mysql.connector.Error as error:
+        print("Failed to insert record into User table {}".format(error))
 
 

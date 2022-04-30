@@ -71,45 +71,37 @@ positions = [
     "Preschool Teacher"
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_alum(connection):
+    mycursor = connection.cursor()
 
-mycursor.execute("SELECT email FROM User")
+    mycursor.execute("SELECT email FROM User where email not in (SELECT uemail from student)")
 
-myresult = mycursor.fetchall()
+    myresult = mycursor.fetchall()
 
-mycursor.execute("SELECT oemail FROM Organization")
+    mycursor.execute("SELECT oemail FROM Organization")
 
-org = mycursor.fetchall()
+    org = mycursor.fetchall()
 
-org_emails = []
+    org_emails = []
 
-for em in org:
-    org_emails.append(em[0])
+    for em in org:
+        org_emails.append(em[0])
 
-for x in myresult:
-    random = randint(0,100)
-    if(random % 3 != 0):
-        continue
-    email = x[0]
-    score = randint(0,10)
-    position = randint(0,50)
-    org = randint(0,14)
-    mySql_insert_query = "INSERT INTO Alumnus VALUES ('" + email +"'," + str(score) + ",'" + positions[position] + "','" + org_emails[org] + "')"
+    for x in myresult:
 
-    cursor = mydb.cursor()
-    cursor.execute(mySql_insert_query)
-    mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into Alumnus table")
-    cursor.close()
+        email = x[0]
+        score = randint(0,10)
+        position = randint(0,50)
+        org = randint(0,len(org_emails)-1)
+        mySql_insert_query = "INSERT INTO Alumnus VALUES ('" + email +"'," + str(score) + ",'" + positions[position] + "','" + org_emails[org] + "')"
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+        cursor = connection.cursor()
+        cursor.execute(mySql_insert_query)
+        connection.commit()
+        cursor.close()
+
+    print(len(myresult), "Record inserted successfully into Alumnus table")
+    
+        
 

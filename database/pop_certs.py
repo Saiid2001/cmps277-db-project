@@ -1,6 +1,10 @@
 from calendar import month
-from random import randint, random
+from random import randint, random, sample
 import mysql.connector
+
+from faker import Faker
+
+faker = Faker()
 
 certs = [
 	"Certified Business Analysis Professional (CBAP)",
@@ -25,42 +29,30 @@ certs = [
 ]
 
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
-
-mycursor = mydb.cursor()
-
-mycursor.execute("SELECT uemail FROM Student")
-
-myresult = mycursor.fetchall()
-
-for x in myresult:
-    num = randint(1,4)
-    email = x[0]
-    crts = []
-    for i in range(num):
-        cert = randint(0,18)
-        if cert in crts:
-            continue
-        else:
-            crts.append(cert)
-            day = randint(1,29)
-            month = randint(1,12)
-            year = randint(2000,2022)
-            certificate = certs[cert]
-            url = certificate.replace(" ", "-") + ".net/certificate/crt=" + str(cert)
-            mySql_insert_query = "INSERT INTO Certifications VALUES ('" + str(year) + "-" + str(month) + "-" + str(day) + "','" + certificate + "','" + url + "','" + email + "')"
-            cursor = mydb.cursor()
-            cursor.execute(mySql_insert_query)
-            mydb.commit()
-            print(cursor.rowcount, "Record inserted successfully into Certifications table")
-            cursor.close()
-
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+def pop_certifications(connection):
+	
+	mycursor = connection.cursor()
+	
+	mycursor.execute("SELECT uemail FROM Student")
+	
+	myresult = mycursor.fetchall()
+	count = 0
+	
+	for x in myresult:
+		num = randint(1,4)
+		email = x[0]
+		crts = sample(certs, k=randint(0,4))
+		
+		for certificate in crts:
+			
+			date = str(faker.date_between(start_date="-4y", end_date="today"))
+			url = certificate.replace(" ", "-") + ".net/certificate/crt=" + str(randint(10000, 20000))
+			mySql_insert_query = "INSERT INTO Certifications VALUES ('"+date + "','" + certificate + "','" + url + "','" + email + "')"
+			cursor = connection.cursor()
+			cursor.execute(mySql_insert_query)
+			connection.commit()
+			cursor.close()
+			count +=1
+			
+	print(count, "Record inserted successfully into Certifications table")
 

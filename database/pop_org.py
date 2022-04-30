@@ -46,10 +46,10 @@ org_locations = []
 scores = []
 typs = []
 for org in org_names:
-    lead = org.replace(" " , "")
-    web = lead + ".com"
+    lead = org.replace(" " , "-").lower()
+    web = lead + ".org"
     website.append(web)
-    email = lead + "@gmail.com"
+    email = "info@"+lead+".org"
     emails.append(email)
     score = random() * 10
     scores.append(score)
@@ -62,35 +62,33 @@ for org in org_names:
 
 
 
-try:
-    connection = mysql.connector.connect(host='localhost',
-                                         database='project',
-                                         user='Nas',
-                                         password='Sanasaida123')
+def pop_org(connection):
 
-    for i in range(20): 
-        name = org_names[i]
-        web = website[i]
-        email = emails[i]
-        score = scores[i]
-        location = org_locations[i]
-        work = typs[i]
-        inst = not work
+    try:
 
-        mySql_insert_query = "INSERT INTO Organization VALUES ('" + web +"','" + name + "','" + email + "','" + location +  "', " + str(score) + "," + str(inst) + "," + str(work) + ")"
+        count = 0
+        for i in range(20): 
+            name = org_names[i]
+            web = website[i]
+            email = emails[i]
+            score = scores[i]
+            location = org_locations[i]
+            work = typs[i]
+            inst = not work
+
+            mySql_insert_query = "INSERT INTO Organization VALUES ('" + web +"','" + name + "','" + email + "','" + location +  "', " + str(score) + "," + str(inst) + "," + str(work) + ")"
 
 
-        cursor = connection.cursor()
-        cursor.execute(mySql_insert_query)
-        connection.commit()
-        print(cursor.rowcount, "Record inserted successfully into Organization table")
-        cursor.close()
+            cursor = connection.cursor()
+            cursor.execute(mySql_insert_query)
+            connection.commit()
+            cursor.close()
+            count +=1
 
-except mysql.connector.Error as error:
-    print("Failed to insert record into Organization table {}".format(error))
+        print(count, "Record inserted successfully into Organization table")
+            
+        
 
-finally:
-    if connection.is_connected():
-        connection.close()
-        print("MySQL connection is closed")
+    except mysql.connector.Error as error:
+        print("Failed to insert record into Organization table {}".format(error))
 

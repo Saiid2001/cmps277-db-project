@@ -1,5 +1,4 @@
-from random import randint, random
-import mysql.connector
+from random import randint
 
 statements = [
     "Architecture is the will of an epoch translated into space.” I was 16 when I first read this quote by Mies van der Rohe, and, back then, I thought I really understood what it meant. Thinking of this quote one summer evening, as I walked around my beloved New York City, I was inspired to commit to a future in architecture. At that early stage, I cherished romantic ideals of designing grandiose buildings that would change a city; of adding my name to the list of architectural geniuses who had immortalized their vision of the world in concrete, steel, glass, and stone. It was in college that I became passionately interested in the theoretical design and engineering concepts that form the basis of architecture, while also exploring in greater detail the sociological and economic impact of architecture.",
@@ -11,34 +10,31 @@ statements = [
     "Though my core interest in clinical psychology and the effects of trauma started as deeply personal, my scholarly curiosity and intellectual proficiency led me to academic explorations of this subject from a young age. While in high school, I took up Intro to Psychology classes from my local community college and completed a Peer Youth Counselling certificate course from the Ryerson Center for Mental Health. This academic exploration confirmed my desire to study psychology in college, and my coursework through my undergrad years focused on building a broad portfolio of the key areas of psychology, including Clinical Psychology, Cognitive Psychology and Behavioral Science, Industrial Psychology, Abnormal Psychology, and more. I also took up courses in Biology, Physiology, and Neuroscience to better understand the physical pathologies of adolescent trauma. I believe this thorough grounding in the biological aspects of developmental psychopathology will help me to address the sorely needed requirement for cross-disciplinary research into effective treatment programs for trauma survivors."
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
-
-mycursor = mydb.cursor()
-
-mycursor.execute("SELECT email FROM User")
-
-myresult = mycursor.fetchall()
 
 
-for x in myresult:
-    email = x[0]
-    stm = randint(0,6)
-    statement = statements[stm]
-    work = randint(0,1)
-    mySql_insert_query = "INSERT INTO Student VALUES ('" + email +"','" + statement + "'," + str(work) + ")"
+def pop_students(connection):
+    mycursor = connection.cursor()
 
-    cursor = mydb.cursor()
-    cursor.execute(mySql_insert_query)
-    mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into Student table")
-    cursor.close()
+    mycursor.execute("SELECT email FROM User")
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+    myresult = mycursor.fetchall()
 
+    count = 0
+
+    for x in myresult:
+
+        if randint(0,1):
+            email = x[0]
+            stm = randint(0,6)
+            statement = statements[stm]
+            work = randint(0,1)
+            mySql_insert_query = "INSERT INTO Student VALUES ('" + email +"','" + statement + "'," + str(work) + ")"
+
+            cursor = connection.cursor()
+            cursor.execute(mySql_insert_query)
+            connection.commit()
+            cursor.close()
+            count +=1
+
+    print(count, "Record inserted successfully into Student table")
+            

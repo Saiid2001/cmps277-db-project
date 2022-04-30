@@ -1,7 +1,13 @@
 from calendar import month
-from random import randint, random
+from random import randint, random, sample
 from unicodedata import name
 import mysql.connector
+
+
+from faker import Faker
+
+faker = Faker()
+
 
 names = [
 	"Future Values",
@@ -41,42 +47,32 @@ descriptions = [
     "GoBee provides the perfect solution for beehives enthusiasts. With GoBee, you can now view your bees around the clock, via video feed, without having to head outdoors. Co-founders, Abe and Alan, are passionate beekeepers and founders of BeeHive Technologies and they designed this tool to monitor the safety of a beehive and to ensure that there are no pests, diseases or drama on a beekeeper’s behalf. GoBee is solar powered",
 ]
 
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="Nas",
-  password="Sanasaida123",
-  database="project"
-)
 
-mycursor = mydb.cursor()
+def pop_projects(connection):
 
-mycursor.execute("SELECT uemail FROM Student")
+        mycursor = connection.cursor()
 
-myresult = mycursor.fetchall()
+        mycursor.execute("SELECT uemail FROM Student")
 
-for x in myresult:
-    num = randint(1,2)
-    email = x[0]
-    prjs = []
-    for i in range(num):
-        prj = randint(0,15)
-        if prj in prjs:
-            continue
-        else:
-            prjs.append(prj)
-            day = randint(1,29)
-            month = randint(1,12)
-            year = randint(2000,2022)
-            name = names[prj]
-            description = descriptions[prj]
-            mySql_insert_query = "INSERT INTO Projects VALUES ('" + str(year) + "-" + str(month) + "-" + str(day) + "','" + name + "','" + description + "','" + email + "')"
-            cursor = mydb.cursor()
-            cursor.execute(mySql_insert_query)
-            mydb.commit()
-            print(cursor.rowcount, "Record inserted successfully into Projects table")
-            cursor.close()
+        myresult = mycursor.fetchall()
 
-if mydb.is_connected():
-    mydb.close()
-    print("MySQL connection is closed")
+        count = 0
 
+        for x in myresult:
+            num = randint(1,2)
+            email = x[0]
+            n_prj = randint(1,4)
+            prjs_names = sample(names, k=n_prj)
+            prjs_desc = sample(descriptions, k=n_prj)
+            
+            for name, description in zip(prjs_names, prjs_desc):
+                date = str(faker.date_between(start_date="-3y", end_date="today"))
+                mySql_insert_query = "INSERT INTO Projects VALUES ('" + date + "','" + name + "','" + description + "','" + email + "')"
+                cursor = connection.cursor()
+                cursor.execute(mySql_insert_query)
+                connection.commit()
+                cursor.close()
+                count +=1
+
+        print(count, "Record inserted successfully into Projects table")
+                
