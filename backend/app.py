@@ -1,10 +1,9 @@
-import re
+
 from decouple import config
-from flask import Flask, request, jsonify
-from flask_mysqldb import MySQL
+from flask import Flask, request, jsonify, session
+from flask_session import Session
+from flask_mysqldb import MySQL, MySQLdb
 from datetime import date, datetime
-import json
-import pymysql
 
 app = Flask(__name__)
 
@@ -15,6 +14,10 @@ app.config['MYSQL_DB'] = config("mysql_db")
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
+
+SESSION_TYPE = 'memcashed'
+app.config.from_object(__name__)
+Session(app)
 
 
 def get(dic, key, default):
@@ -35,9 +38,30 @@ def prepDict(dic):
                 dic[key] = dic[key].strftime(format= "%Y-%m-%d")
         return dic
 
+    else :
+        return dic
+
 @app.route("/")
 def index():
     return jsonify({"status": "running", "time": str(datetime.now())})
+
+
+@app.route('/login', methods=['POST'])
+def login():
+
+    content = request.form
+    cursor = mysql.connection.cursor()
+    cursor.execute(f"""select email as uid from user where email='{content['email']}' and pass=sha1('{content['password']}') """)
+
+    rv = cursor.fetchone()
+
+    if not rv:
+        return jsonify("Wrong email/password"), 403
+
+    session['user'] = content['email'] 
+    return jsonify("Logged in"), 200
+    
+
 
 
 @app.route("/users/<string:email>", methods=['GET', 'POST'])
@@ -134,16 +158,17 @@ def getUserType(email):
         return str(e), 500
 
 
-@app.route("/users/<string:email>/education", methods = ["GET", "DELETE"])
+@app.route("/users/<string:email>/education", methods = ["GET"])
 def educations(email):
     try:
         
         cursor = mysql.connection.cursor()
         cursor.execute(f"""select id, major, inst_email as org_id,  oname as org_name, 
-                                score, start_date as start_at, end_date as end_at, major
+                                score, start_date as start_at, end_date as end_at
                         from Complete_Program
                         join organization_name on inst_email = oemail
-                        where uemail = '{email}'""")
+                        where uemail = '{email}'
+                        order by start_date desc, end_date desc""")
         rv = cursor.fetchall()
 
         for educ in rv:
@@ -301,20 +326,124 @@ def mentor(email):
     except Exception as e:
         print(e)
         return jsonify(str(e)), 500
-        
-# TODO : add a view for organizations names because it is used in many requests
-@app.route("/organizations/names")
-def organizationNames():
-    try:
 
+@app.route("/mentors/<string:email>/experience", methods = ["GET"])
+def experiences(email):
+    try:
+        
         cursor = mysql.connection.cursor()
-        cursor.execute("select oemail as org_id, oname as org_name from Organization_name sort by oname")
-        rows = cursor.fetchall()
-        return jsonify(rows), 200
+        cursor.execute(f"""select id, position, start_date as start_at, end_date as end_at,
+                                  work_email as org_id, oname as org_name
+                        from experience
+                        join organization_name on work_email = oemail
+                        where alemail = '{email}'
+                        order by start_date desc, end_date desc""")
+        rv = cursor.fetchall()
+
+        for educ in rv:
+
+            educ['accomplishments'] = []
+            cursor.execute(f"""select title, content 
+                                from exp_accomplishments
+                                where ex_id = '{educ['id']}'""")
+
+            resp = cursor.fetchall()
+
+            for acc in resp:
+                educ['accomplishments'].append(acc["content"])
+
+        return jsonify(prepDict(rv))
     except Exception as e:
         print(e)
         return str(e), 500
-      
+
+
+@app.route("/mentors/<string:email>/experience/<int:eid>", methods = ["DELETE", "POST"])
+def experience(email,eid):
+    try:
+
+        if request.method == "DELETE":
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"select id from experience where alemail = '{email}' and id='{eid}'")
+            
+            rv = cursor.fetchone()
+
+            if not rv:
+                return jsonify("Not allowed to delete exprience"), 405
+            
+            cursor.execute(f"delete from experience where id = '{eid}'")
+            mysql.connection.commit()
+            return jsonify('Exp deleted successfully.'), 200
+
+        else:
+            # add or update
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select id, position, start_date as start_at, end_date as end_at,
+                                  work_email as org_id, alemail
+                        from experience
+                        where id = '{eid}'""")
+            rv = cursor.fetchone()
+
+            content = request.get_json()
+
+            position =get(content, "position", rv)
+            org_id = get(content, "org_id", rv)
+            start_at = get(content, "start_at", rv)
+            end_at = get(content, "end_at", rv)
+
+            if rv and rv['alemail'] == email:
+                # can update
+
+                update_user_cmd = f"""update experience
+                                 set position='{position}', work_email='{org_id}', start_date='{start_at}', end_date='{end_at}'
+                                 where id={eid}"""
+                cursor.execute(update_user_cmd)
+                mysql.connection.commit()
+
+                if "accomplishments" in content:
+                    cursor.execute(f"""delete from exp_accomplishments where ex_id='{eid}'""")
+                    for i, acc in enumerate(content["accomplishments"]):
+                        cursor.execute(f"""INSERT INTO exp_accomplishments (ex_id, title, content) 
+                                            values ('{eid}', '{f"Acc-{i}"}','{acc}')""")
+                
+                mysql.connection.commit()
+
+
+                return jsonify('User updated successfully.'), 200
+
+
+            elif not rv:
+                # can create
+                insert_user_cmd = f"""INSERT INTO experience(position, work_email, start_date, end_date, alemail)
+                                    VALUES('{position}', '{org_id}', "{start_at}", '{end_at}', '{email}')"""
+                cursor.execute(insert_user_cmd)
+                mysql.connection.commit()
+
+                cursor.execute(f"""select id from experience where alemail='{email}' order by id desc""")
+
+                latest = cursor.fetchone()
+                
+                if "accomplishments" in content:
+                    for i, acc in enumerate(content["accomplishments"]):
+                        cursor.execute(f"""INSERT INTO exp_accomplishments (ex_id, title, content) 
+                                            values ('{latest['id']}', '{f"Acc-{i}"}', '{acc}')""")
+                    
+
+                mysql.connection.commit()
+                return jsonify('User added successfully.'), 200
+            
+
+            
+            else:
+                #not allowed
+                return jsonify("Not allowed to edit"), 405
+
+
+        
+
+    except Exception as e:
+        raise(e)
+        return jsonify('Failed to delete prog. '+str(e)), 500
 
 @app.route("/seekers/<string:email>", methods = ['GET', 'POST'])
 def seeker(email):
@@ -367,6 +496,190 @@ def seeker(email):
         return str(e), 500
 
 
+@app.route("/seekers/<string:email>/projects", methods = ["GET", "POST", "DELETE"])
+def projects(email):
+    try:
+
+        if request.method == "GET":
+        
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select date, name, description
+                            from projects
+                            where semail = '{email}'
+                            order by date desc""")
+            rv = cursor.fetchall()
+
+            return jsonify(prepDict(rv))
+
+        if request.method == "DELETE":
+            content = request.get_json()
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select name from projects 
+                                where date='{content['date']}' 
+                                and semail='{email}'""")
+
+            rv = cursor.fetchone()
+
+            if not rv:
+                return jsonify("Cannot delete"), 405
+
+            cursor.execute(f"""delete from projects 
+                                where date='{content['date']}' 
+                                and semail='{email}'""")
+            mysql.connection.commit()
+            return jsonify("deleted successfully"), 200
+
+        if request.method == "POST":
+
+            content = request.get_json()
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select name from projects 
+                                where date='{content['date']}' 
+                                and semail='{email}'""")
+
+            rv = cursor.fetchone()
+
+            description = get(content, 'description', rv)
+            name = get(content, 'name', rv)
+
+            if rv:
+                cursor.execute(f"""update projects 
+                                    set description='{description}', name='{name}'
+                                    where date='{content['date']}' 
+                                    and semail='{email}'""")
+
+                
+                mysql.connection.commit()
+
+                return jsonify("Updated successfully"), 200
+            else:
+
+                query = f"""insert into projects ( description, name, date, semail)
+                                    values ('{description}','{name}','{content['date']}','{email}')"""
+                
+                cursor.execute(query)
+                mysql.connection.commit()
+
+                return jsonify("Created successfully"), 200
+    except Exception as e:
+        print(e)
+        return str(e), 500
+
+
+@app.route("/seekers/<string:email>/certifications", methods = ["GET", "POST", "DELETE"])
+def certifications(email):
+    try:
+
+        if request.method == "GET":
+        
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select date, name, url
+                            from certifications
+                            where semail = '{email}'
+                            order by date desc""")
+            rv = cursor.fetchall()
+
+            return jsonify(prepDict(rv))
+
+        if request.method == "DELETE":
+            content = request.get_json()
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select name from certifications 
+                                where url='{content['url']}' 
+                                and semail='{email}'""")
+
+            rv = cursor.fetchone()
+
+            if not rv:
+                return jsonify("Cannot delete"), 405
+
+            cursor.execute(f"""delete from certifications 
+                                where url='{content['url']}' 
+                                and semail='{email}'""")
+            mysql.connection.commit()
+            return jsonify("deleted successfully"), 200
+
+        if request.method == "POST":
+
+            content = request.get_json()
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select name from certifications 
+                                where url='{content['url']}' 
+                                and semail='{email}'""")
+
+            rv = cursor.fetchone()
+
+            url = get(content, 'url', rv)
+            name = get(content, 'name', rv)
+
+            if rv:
+                cursor.execute(f"""update certifications 
+                                    set name='{name}'
+                                    where url='{content['url']}' 
+                                    and semail='{email}'""")
+                
+                mysql.connection.commit()
+
+                return jsonify("Updated successfully"), 200
+            else:
+
+                query = f"""insert into projects ( description, name, date, semail)
+                                    values ('{description}','{name}','{content['date']}','{email}')"""
+                
+                cursor.execute(query)
+                mysql.connection.commit()
+
+                return jsonify("Created successfully"), 200
+    except Exception as e:
+        print(e)
+        return str(e), 500
+
+
+@app.route("/seekers/<string:email>/skills", methods = ["GET", "POST"])
+def skills(email):
+    try:
+
+        if request.method == "GET":
+        
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select skill
+                            from skills
+                            where semail = '{email}'
+                            order by skill asc""")
+            rv = cursor.fetchall()
+
+            rv = [x['skill'] for x in rv]
+
+            return jsonify(prepDict(rv))
+
+        if request.method == "POST":
+
+            content = request.get_json()
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""delete from skills  
+                                where semail='{email}'""")
+
+            mysql.connection.commit()
+
+
+            for skill in content:
+                query = f"""insert into skills ( skill, semail)
+                                    values ('{skill}','{email}')"""
+                
+                cursor.execute(query)
+            
+            mysql.connection.commit()
+
+            return jsonify("Updated successfully"), 200
+    except Exception as e:
+        print(e)
+        return str(e), 500
+
 @app.route("/delete/<int:_id>")
 def deleteUser(_id):
     try:
@@ -380,593 +693,329 @@ def deleteUser(_id):
         print(e)
         response = jsonify('Failed to delete user.')
         response.status_code = 500
-     
 
 
-@app.route("/display/experiences/<int:id>")
-def getExperience(id):
-    try:
 
-        cursor = mysql.connection.cursor()
-        cursor.execute(
-            "select org_id, start_date, end_date, position, accomplishments, org_name from Alum_Experience_Org a, Organization o where a.org_id = o.id and a.id=%s ", id)
-        # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-        rv = cursor.fetchone()
-        # json_data=[dict(zip(row_headers,rv))]
-        # for result in rv:
-        #   json_data.append(dict(zip(row_headers,result)))
-        return jsonify(prepDict(rv))
-    except Exception as e:
-        print(e)
-      
-
-
-@app.route("/set/Experience", methods=['GET', 'POST'])
-def setExperience(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['uid']
-        position = content['position']
-        org_id = content['org_id']
-        org_name = content['org_name']
-        start_at = content['start_at']
-        end_at = content['end_at']
-        accomplishments = content['accomplishments']
-        select_user_cmd = (
-            "select id, org_id, start_at from Alum_Experience_Org where id =%s, org_id=%s, start_at=%s")
-        cursor.execute(select_user_cmd, (_id, org_id, start_at))
-        rv = cursor.fetchone()
-
-        if not rv:
-            insert_user_cmd = """INSERT INTO Alum_Experience_Org(position, org_id, start_at, end_at, accomplishments)
-                                    VALUES(%s, %s, %s, %s, %s, %s)"""
-            cursor.execute(insert_user_cmd, (position, org_id,
-                           start_at, end_at, accomplishments))
-            mysql.connection.commit()
-            response = jsonify(
-                message='User added successfully.', id=cursor.lastrowid)
-            #response.data = cursor.lastrowid
-            response.status_code = 200
-        else:
-            update_user_cmd = """update Alum_Experience_Org
-                                 set position=%s, org_id=%s, start_at=%s, end_at=%s, accomplishments=%s
-                                 where id=%s and org_id=%s and start_at=%s"""
-            cursor.execute(update_user_cmd, (position, org_id, start_at,
-                           end_at, accomplishments, id, org_id, start_at))
-            mysql.connection.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/experience/<int:id>")
-def deleteExperience(id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from Alum_Experience_Org where id = %s', id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-@app.route("/display/projects/<int:id>")
-def getProjects(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute(
-            "select name, description, date from Student_Project where id = %s", _id)
-        # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-        rv = cursor.fetchone()
-        # json_data=[dict(zip(row_headers,rv))]
-        # for result in rv:
-        #   json_data.append(dict(zip(row_headers,result)))
-        return jsonify(prepDict(rv))
-    except Exception as e:
-        print(e)
-      
-
-
-@app.route("/set/project/<int:_id>", methods=['GET', 'POST'])
-def setProject(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['uid']
-        name = content['name']
-        _date = content['date']
-        description = content['description']
-        select_user_cmd = (
-            "select id, name, date from Student_Project where id =%s, name=%s, date=%s")
-        cursor.execute(select_user_cmd, (_id, name, _date))
-        rv = cursor.fetchone()
-
-        if not rv:
-            insert_user_cmd = """INSERT INTO Student_Project(id, name, date, description)
-                                VALUES(%s, %s, %s, %s)"""
-            cursor.execute(insert_user_cmd, (_id, name, _date, description))
-            mysql.connection.commit()
-            response = jsonify(
-                message='User added successfully.', id=cursor.lastrowid)
-            #response.data = cursor.lastrowid
-            response.status_code = 200
-        else:
-            update_user_cmd = """update Student_Project
-                                 set name=%s, date=%s, description=%s
-                                 where id=%s and name=%s and date=%s"""
-            cursor.execute(update_user_cmd, (name, _date,
-                           description, _id, name, _date))
-            mysql.connection.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/project/<int:_id>")
-def deleteProject(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from Student_Project where id = %s', _id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-@app.route("/display/certification/<int:_id>")
-def getCertifications(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute(
-            "select name, url, date from Student_Certification where id = %s", _id)
-        # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-        rv = cursor.fetchall()
-        # json_data=[dict(zip(row_headers,rv))]
-        # for result in rv:
-        #   json_data.append(dict(zip(row_headers,result)))
-        return jsonify(prepDict(rv))
-    except Exception as e:
-        print(e)
-      
-
-
-@app.route("/set/certification", methods=['GET', 'POST'])
-def setCertification(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['uid']
-        name = content['name']
-        date = content['date']
-        url = content['url']
-        select_user_cmd = (
-            "select id, name, date from Student_Certification where id =%s and name=%s and date=%s")
-        cursor.execute(select_user_cmd, (_id, name, date))
-        rv = cursor.fetchone()
-
-        if not rv:
-            insert_user_cmd = """INSERT INTO Student_Certification(id, name, date, url)
-                                VALUES(%s, %s, %s, %s)"""
-            cursor.execute(insert_user_cmd, (_id, name, date, url))
-            mysql.connection.commit()
-            response = jsonify(
-                message='User added successfully.', id=cursor.lastrowid)
-            #response.data = cursor.lastrowid
-            response.status_code = 200
-        else:
-            update_user_cmd = """update Student_Certification
-                                 set name=%s, date=%s, url=%s
-                                 where id=%s and name=%s and date=%s"""
-            cursor.execute(update_user_cmd, (name, date, url, _id, name, date))
-            mysql.connection.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/certification/<int:id>")
-def deleteCertification(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from Student_Certification where id = %s', _id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-@app.route("/display/skills/<int:id>")
-def getSkills(id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute("select name from Student_Skill where id = %s", id)
-        # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-        rv = cursor.fetchone()
-        # json_data=[dict(zip(row_headers,rv))]
-        # for result in rv:
-        #   json_data.append(dict(zip(row_headers,result)))
-        return jsonify(prepDict(rv))
-    except Exception as e:
-        print(e)
-      
-
-
-@app.route("/set/skills", methods=['GET', 'POST'])
-def setSkills(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['uid']
-        name = content['name']
-        select_user_cmd = (
-            "select id, name from Student_Skill where id =%s and name=%s")
-        cursor.execute(select_user_cmd, (_id, name))
-        rv = cursor.fetchone()
-
-        if not rv:
-            insert_user_cmd = """INSERT INTO Student_Skill(id, name)
-                                VALUES(%s, %s)"""
-            cursor.execute(insert_user_cmd, (_id, name))
-            mysql.connection.commit()
-            response = jsonify(
-                message='User added successfully.', id=cursor.lastrowid)
-            #response.data = cursor.lastrowid
-            response.status_code = 200
-        else:
-            update_user_cmd = """update Student_Skill
-                                 set name=%s
-                                 where id=%s and name=%s"""
-            cursor.execute(update_user_cmd, (name, _id, name))
-            mysql.connection.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/followField/<int:_id>")
-def unfollowField(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from Stud_Will_Work_Field where id = %s', _id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-@app.route("/set/followField", methods=['GET', 'POST'])
-def followField(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['uid']
-        name = content['fieldId']
-        select_user_cmd = (
-            "select id, name from Stud_Will_Work_Field where id =%s and name=%s")
-        cursor.execute(select_user_cmd, (_id, name))
-        rv = cursor.fetchone()
-
-        if not rv:
-            insert_user_cmd = """INSERT Stud_Will_Work_Field(id, name)
-                                VALUES(%s, %s)"""
-            cursor.execute(insert_user_cmd, (_id, name))
-            mysql.connection.commit()
-            response = jsonify(
-                message='User added successfully.', id=cursor.lastrowid)
-            #response.data = cursor.lastrowid
-            response.status_code = 200
-        else:
-            update_user_cmd = """update Stud_Will_Work_Field
-                                 set name=%s
-                                 where id=%s and name=%s"""
-            cursor.execute(update_user_cmd, (name, _id, name))
-            mysql.connection.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/display/fields/")
+# maybe make it a view
+@app.route("/fields", methods=['GET'])
 def getFields():
     try:
 
         cursor = mysql.connection.cursor()
         content = request.get_json()
-        name = content['name']
-        sort_by_factor = content['sort_by']
-        if name == pymysql.NULL and sort_by_factor == pymysql.NULL:
-            cursor.execute("select opp.id as field_id, o.required_opp_field_name as name, opp.description, count(distinct o.id) as n_opportunities, count(distinct sw.id) as n_seekers from opp_field opp inner join opportunity o on o.required_opp_field_name = opp.name inner join stud_will_work_field sw on sw.field_name = opp.name group by field_name")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif sort_by_factor == pymysql.NULL:
-            cursor.execute("select opp.id as field_id, o.required_opp_field_name as name, opp.description, count(distinct o.id) as n_opportunities, count(distinct sw.id) as n_seekers from opp_field opp inner join opportunity o on o.required_opp_field_name = opp.name inner join stud_will_work_field sw on sw.field_name = opp.name group by field_name having field_name =%s", name)
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "name":
-            cursor.execute("select opp.id as field_id, o.required_opp_field_name as name, opp.description, count(distinct o.id) as n_opportunities, count(distinct sw.id) as n_seekers from opp_field opp inner join opportunity o on o.required_opp_field_name = opp.name inner join stud_will_work_field sw on sw.field_name = opp.name group by field_name order by field_name")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "seekers":
-            cursor.execute("select opp.id as field_id, o.required_opp_field_name as name, opp.description, count(distinct o.id) as n_opportunities, count(distinct sw.id) as n_seekers from opp_field opp inner join opportunity o on o.required_opp_field_name = opp.name inner join stud_will_work_field sw on sw.field_name = opp.name group by field_name order by n_seekers desc")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "opp":
-            cursor.execute("select opp.id as field_id, o.required_opp_field_name as name, opp.description, count(distinct o.id) as n_opportunities, count(distinct sw.id) as n_seekers from opp_field opp inner join opportunity o on o.required_opp_field_name = opp.name inner join stud_will_work_field sw on sw.field_name = opp.name group by field_name order by n_opportunities desc")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-    except Exception as e:
-        print(e)
-      
 
+        match_name_segment = "f.ofname like '%{}%'"
+        match_description_segment = "f.description like '%{}%'"
 
-app.route("/display/field/")
+        where_list = []
+        join_segment = ""
+        sort_by = ""
 
+        if 'search' in content:
+            where_list.append(f"({match_name_segment.format(content['search'])} or {match_description_segment.format(content['search'])})")
 
-def getField(_id):
-    try:
+        if 'sort_by' in content:
+            if content['sort_by'] == 'name':
+                sort_by = "order by name asc"
+            elif content['sort_by'] == 'seekers':
+                sort_by = "order by n_seekers desc"
+            elif content['sort_by'] == "opp":
+                sort_by = "order by n_opportunities desc"
 
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        _id = content['id']
-        cursor.execute(
-            "select id, name, description from opp_field where id = %s", _id)
-        # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-        rv = cursor.fetchone()
-        # json_data=[dict(zip(row_headers,rv))]
-        # for result in rv:
-        #   json_data.append(dict(zip(row_headers,result)))
+        
+        where_segment = ""
+
+        if len(where_list):
+            where_segment = f"where {' and '.join(where_list)}"
+
+        query = f"""select f.ofname as id, f.ofname as name, 
+                        f.description as description,
+                        count(distinct(w.semail)) as n_seekers, count(distinct(o.id)) as n_opportunities
+                        
+                from opportunity_field f 
+                    natural left join will_to_work w
+                    left join opportunity o on o.opp_field = f.ofname
+                {where_segment}
+                group by f.ofname
+                {sort_by}"""
+
+        if "follower_id" in content:
+            query = f"""
+            select * from ({query}) Q
+            where id in (
+                select w.ofname from will_to_work w 
+                where w.semail='{content['follower_id']}')
+            {sort_by}
+            """
+
+        cursor.execute(query)
+        rv = cursor.fetchall()
         return jsonify(prepDict(rv))
     except Exception as e:
+        raise(e)
+
+
+@app.route("/fields/follow", methods=['DELETE', 'POST'])
+def followField():
+    try:
+        if request.method == "DELETE":
+            content = request.get_json()
+            cursor = mysql.connection.cursor()
+            query = f'delete from will_to_work where ofname="{content["name"]}" and semail ="{content["uid"]}"'
+            
+            cursor.execute(query)
+            mysql.connection.commit()
+            return jsonify('unfollowed'), 200
+
+        else:
+            content = request.get_json()
+            cursor = mysql.connection.cursor()
+            query = f'select * from will_to_work where ofname="{content["name"]}" and semail ="{content["uid"]}"'
+            cursor.execute(query)
+            
+            rv = cursor.fetchone()
+
+            if rv:
+                return jsonify("Already followed"), 200
+            
+            query = f'insert into will_to_work(ofname, semail) values ("{content["name"]}" ,"{content["uid"]}")'
+            cursor.execute(query)
+            mysql.connection.commit()
+            return jsonify('followed'), 200
+    except Exception as e:
         print(e)
-      
+        return jsonify('Failed to follow. '+str(e)), 500
 
 
-@app.route("/set/Field", methods=['GET', 'POST'])
-def addField():
+@app.route("/fields/field", methods=['GET', 'POST', 'PATCH', 'DELETE' ])
+def field():
     try:
 
-        cursor = mysql.connection.cursor()
+        
         content = request.get_json()
-        name = content['name']
-        description = content['description']
-        insert_user_cmd = """INSERT INTO opp_field(name, description)
-                                VALUES(%s, %s)"""
-        cursor.execute(insert_user_cmd, (name, description))
-        mysql.connection.commit()
-        response = jsonify(
-            message='User added successfully.', id=cursor.lastrowid)
-        #response.data = cursor.lastrowid
-        response.status_code = 200
+        
+        if request.method == "GET":
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select ofname as id, ofname as name, description
+                            from opportunity_field
+                            where ofname = '{content['id']}'""")
+            rv = cursor.fetchone()
+
+            return jsonify(prepDict(rv)), 200
+
+        if request.method == "POST":
+            # add new field
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""insert into opportunity_field (ofname, description) values('{content['name']}', '{content['description']}')""")
+            mysql.connection.commit()
+
+            return jsonify("Added"), 200
+
+        if request.method == "PATCH":
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""update opportunity_field set description='{content['description']}' where ofname='{content['id']}'""")
+            mysql.connection.commit()
+
+            return jsonify("Edited"), 200
+
+        if request.method == "DELETE":
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""delete from opportunity_field where ofname='{content['id']}'""")
+            mysql.connection.commit()
+
+            return jsonify("Deleted"), 200
+
+    except MySQLdb._exceptions.IntegrityError as e:
+        return jsonify('Already exists'), 405
+
     except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
+        return jsonify('Failed to get. '+str(e)), 500
 
 
-@app.route("/edit/Field", methods=['GET', 'POST'])
-def editField():
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        name = content['name']
-        description = content['description']
-        update_user_cmd = """update opp_field
-                                 set description=%s
-                                 where name=%s"""
-        cursor.execute(update_user_cmd, (description, name))
-        mysql.connection.commit()
-        response = jsonify('User updated successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/Field/<int:id>")
-def deleteField(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from opp_field where id = %s', _id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-@app.route("/display/organizations/")
+@app.route("/organizations", methods=['GET'])
 def getOrganizations():
     try:
 
         cursor = mysql.connection.cursor()
-        content = request.get_json()
-        name = content['name']
-        sort_by_factor = content['sort_by']
-        if name == pymysql.NULL and sort_by_factor == pymysql.NULL:
-            cursor.execute("select org.id as id, org.name as name, org.location as location, count(distinct o.id) as n_opportunities, count(distinct me.id) as n_mentor from Organization org inner join opportunity o on o.org_id = org.id inner join Alum_Associate_Opp me on me.opp_id = o.id group by org.name")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif sort_by_factor == pymysql.NULL:
-            cursor.execute("select org.id as id, org.name as name, org.location as location, count(distinct o.id) as n_opportunities, count(distinct me.id) as n_mentor from Organization org inner join opportunity o on o.org_id = org.id inner join Alum_Associate_Opp me on me.opp_id = o.id group by org.name having org.name =%s", name)
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "name":
-            cursor.execute("select org.id as id, org.name as name, org.location as location, count(distinct o.id) as n_opportunities, count(distinct me.id) as n_mentor from Organization org inner join opportunity o on o.org_id = org.id inner join Alum_Associate_Opp me on me.opp_id = o.id group by org.name order by org.name")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "mentors":
-            cursor.execute("select org.id as id, org.name as name, org.location as location, count(distinct o.id) as n_opportunities, count(distinct me.id) as n_mentor from Organization org inner join opportunity o on o.org_id = org.id inner join Alum_Associate_Opp me on me.opp_id = o.id group by org.name order by n_mentor desc")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
-        elif name == pymysql.NULL and sort_by_factor == "opp":
-            cursor.execute("select org.id as id, org.name as name, org.location as location, count(distinct o.id) as n_opportunities, count(distinct me.id) as n_mentor from Organization org inner join opportunity o on o.org_id = org.id inner join Alum_Associate_Opp me on me.opp_id = o.id group by org.name order by n_opportunities desc")
-            # row_headers=[x[0] for x in cursor.description] #this will extract row headers
-            rv = cursor.fetchall()
-            # json_data=[dict(zip(row_headers,rv))]
-            # for result in rv:
-            #   json_data.append(dict(zip(row_headers,result)))
-            return jsonify(prepDict(rv))
+        #content = request.get_json()
+        content = {
+            'search': "Croatia"
+
+        }
+
+        match_search = [
+            "org.oname like '%{}%'",
+            "org.olocation like '%{}%'",
+            "org.website like '%{}%'",
+        ]
+
+
+        where_list = []
+        join_segment = ""
+        sort_by = ""
+
+        if 'search' in content:
+            where_list.append(f"({' or '.join([x.format(content['search']) for x in match_search])})")
+
+        if 'location' in content:
+            where_list.append(f"org.olocation='{content['location']}'")
+
+        if 'sort_by' in content:
+            if content['sort_by'] == 'name':
+                sort_by = "order by name asc"
+            elif content['sort_by'] == 'mentors':
+                sort_by = "order by n_seekers desc"
+            elif content['sort_by'] == "opp":
+                sort_by = "order by n_opportunities desc"
+            elif content['sort_by'] == "comp":
+                sort_by = "order by avg_compensation desc"
+
+        
+        where_segment = ""
+
+        if len(where_list):
+            where_segment = f"where {' and '.join(where_list)}"
+
+        query = f"""select org.oemail as id,org.oname as name, 
+                        org.oemail as email, org.website as website,
+                        org.olocation as location, org.is_educational as is_educational,
+						CASE when n_mentors is null then 0 else n_mentors end as n_mentors, 
+                        n_opportunities, 
+                        max_compensation, 
+                        min_compensation, 
+                        avg_compensation
+                from organization org
+                    natural left join (
+                        select work_email as oemail, count(uemail)as n_mentors from alumnus
+                        group by work_email
+                        ) W
+                        
+					natural left join (
+						select hosting_email as oemail, count(id) as n_opportunities,
+                        max(comp_amount) as max_compensation, min(comp_amount) as min_compensation, 
+                        avg(comp_amount) as avg_compensation
+                        from opportunity
+                        group by hosting_email
+                        
+					) O
+                {where_segment}
+                {sort_by}"""
+
+        
+        cursor.execute(query)
+        rv = cursor.fetchall()
+        return jsonify(prepDict(rv))
     except Exception as e:
-        print(e)
-      
+        raise(e)
 
 
-@app.route("/set/Org", methods=['GET', 'POST'])
-def addOrganization():
+@app.route("/organizations/<string:oemail>", methods=['GET', 'POST', 'PATCH', 'DELETE'])
+def organization(oemail):
+    try:
+
+
+        if request.method=='GET':
+            cursor = mysql.connection.cursor()
+            
+            query = f"""select org.oemail as id,org.oname as name, 
+                            org.oemail as email, org.website as website,
+                            org.olocation as location, org.is_educational as is_educational,
+                            CASE when n_mentors is null then 0 else n_mentors end as n_mentors, 
+                            n_opportunities, 
+                            max_compensation, 
+                            min_compensation, 
+                            avg_compensation
+                    from organization org
+                        natural left join (
+                            select work_email as oemail, count(uemail)as n_mentors from alumnus
+                            group by work_email
+                            ) W
+                            
+                        natural left join (
+                            select hosting_email as oemail, count(id) as n_opportunities,
+                            max(comp_amount) as max_compensation, min(comp_amount) as min_compensation, 
+                            avg(comp_amount) as avg_compensation
+                            from opportunity
+                            group by hosting_email
+                            
+                        ) O
+                    where org.oemail = '{oemail}'
+                    """
+
+            
+            cursor.execute(query)
+            rv = cursor.fetchone()
+
+            if not rv: return jsonify("Not found"), 404
+
+            return jsonify(prepDict(rv))
+
+        if request.method == "POST":
+            cursor = mysql.connection.cursor()
+            content = request.get_json()
+            name = content['name']
+            website = content['website']
+            location = content['location']
+            is_educational = 1 if content['is_educational'] else 0
+            insert_user_cmd = """INSERT INTO organization(oname, oemail,website,olocation,is_educational, oscore, is_workplace)
+                                    VALUES('{}', '{}', '{}', '{}', '{}', 0, 1)"""
+            cursor.execute(insert_user_cmd.format(name, oemail,
+                        website, location, is_educational))
+            mysql.connection.commit()
+
+            
+            return jsonify("Added"),200
+
+        if request.method == "PATCH":
+
+            cursor = mysql.connection.cursor()
+            content = request.get_json()
+
+            query = f"""
+                select oname as name, oemail as email,
+                         website, olocation as location, is_educational
+                from organization 
+                where oemail = '{oemail}'
+            """
+            cursor.execute(query)
+
+            rv = cursor.fetchone()
+
+            if not rv:
+                return jsonify("not found"), 404
+
+            name = get(content, 'name', rv)
+            website = get(content, 'website', rv)
+            location = get(content, 'location', rv)
+            is_educational = 1 if get(content, 'is_educational', rv) else 0
+            insert_user_cmd = """Update organization set oname='{}',website='{}',olocation='{}',is_educational='{}' where oemail='{}'"""
+            cursor.execute(insert_user_cmd.format(name,
+                        website, location, is_educational, oemail))
+            mysql.connection.commit()
+
+            
+            return jsonify("Added"),200
+
+        if request.method == "DELETE":
+            insert_user_cmd = """delete from organization where oemail='{}'"""
+            cursor.execute(insert_user_cmd.format(oemail))
+
+    except Exception as e:
+        raise(e)
+
+
+# TODO : add a view for organizations names because it is used in many requests
+@app.route("/organizations/names")
+def organizationNames():
     try:
 
         cursor = mysql.connection.cursor()
-        content = request.get_json()
-        name = content['name']
-        email = content['email']
-        website = content['website']
-        location = content['location']
-        is_educational = content['is_educational']
-        insert_user_cmd = """INSERT INTO organization(name, email,website,location,is_educational)
-                                VALUES(%s, %s, %s, %s, %s)"""
-        cursor.execute(insert_user_cmd, (name, email,
-                       website, location, is_educational))
-        mysql.connection.commit()
-        response = jsonify(
-            message='User added successfully.', id=cursor.lastrowid)
-        #response.data = cursor.lastrowid
-        response.status_code = 200
+        cursor.execute("select oemail as org_id, oname as org_name from Organization_name order by oname")
+        rows = cursor.fetchall()
+        return jsonify(rows), 200
     except Exception as e:
         print(e)
-        return jsonify(str(e)), 500
-     
+        return str(e), 500
 
 
-@app.route("/edit/Field", methods=['GET', 'POST'])
-def editOrganization():
-    try:
-
-        cursor = mysql.connection.cursor()
-        content = request.get_json()
-        name = content['name']
-        email = content['email']
-        website = content['website']
-        location = content['location']
-        is_educational = content['is_educational']
-        update_user_cmd = """update organization
-                                 set email=%s, website=%s, location=%s, is_educational=%s
-                                 where name=%s"""
-        cursor.execute(update_user_cmd, (email, website,
-                       location, is_educational, name))
-        mysql.connection.commit()
-        response = jsonify('User updated successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        return jsonify(str(e)), 500
-     
-
-
-@app.route("/delete/Field/<int:id>")
-def deleteOrganization(_id):
-    try:
-
-        cursor = mysql.connection.cursor()
-        cursor.execute('delete from Organization where id = %s', _id)
-        mysql.connection.commit()
-        response = jsonify('User deleted successfully.')
-        response.status_code = 200
-    except Exception as e:
-        print(e)
-        response = jsonify('Failed to delete user.')
-        response.status_code = 500
-     
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+app.run(debug=True)

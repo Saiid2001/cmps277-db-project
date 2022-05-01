@@ -44,8 +44,7 @@ def pop_users(connection):
             gender = "Male" if randint(0,1)==1 else "Female"
             website = fname + "git.com"
             phone = "71775923" 
-            mySql_insert_query = "INSERT INTO User VALUES ('" + fname +"','" + lname + "','" + email + "','" + linked_in + "','" + phone + "', '" + str(dob) + "','" + website + "','" + gender + "')"
-
+            mySql_insert_query = "INSERT INTO User VALUES ('" + fname +"','" + lname + "','" + email + "', sha1('"+str(randint(1000,2000)) +"'),'"+ linked_in + "','" + phone + "', '" + str(dob) + "','" + website + "','" + gender + "')"
             cursor = connection.cursor()
             cursor.execute(mySql_insert_query)
             connection.commit()

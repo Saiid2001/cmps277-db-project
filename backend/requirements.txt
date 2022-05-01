@@ -2,3 +2,4 @@ python-decouple
 mysql-connector-python
 flask
 flask-mysqldb
+flask-session

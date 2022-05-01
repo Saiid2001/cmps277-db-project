@@ -38,7 +38,6 @@ try:
     import mysql.connector
 
     connection = mysql.connector.connect(host=config('mysql_hostname'),
-                                            database=config('mysql_db'),
                                             user=config('mysql_user'),
                                             password=config('mysql_password'))
 

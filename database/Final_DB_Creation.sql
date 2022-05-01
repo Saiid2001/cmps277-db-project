@@ -1,4 +1,4 @@
-Drop Schema Project;
+ Drop Schema if exists Project;
 
 Create Schema Project;
 
@@ -23,6 +23,7 @@ Create Table User(
 	fname Varchar(100) Not NULL,
     lname Varchar(100) NOT NULL,
     email Varchar(200) NOT NULL unique primary key,
+    pass Varchar(200),
     linked_in Varchar(200),
     phone Varchar(20),
     dob date not null,
@@ -82,7 +83,7 @@ Create Table Projects(
     description text,
     semail Varchar(200) NOT NULL,
     Foreign key (semail) references Student(uemail) On delete cascade,
-    Primary Key(semail, name)
+    Primary Key(semail, name, date)
 );
 
 Create index s_email on Projects (semail);
@@ -93,7 +94,7 @@ Create Table Certifications(
     url Varchar(100),
     semail Varchar(200) NOT NULL,
     Foreign key (semail) references Student(uemail) On delete cascade,
-    Primary Key(semail, name)
+    Primary Key(semail, url)
 );
 
 Create index student_email on Certifications (semail);
@@ -114,7 +115,7 @@ Create Table Opportunity(
         alemail Varchar(200) NOT NULL,
         
         Foreign Key(opp_field) references Opportunity_Field(ofname),
-        Foreign Key(hosting_email) references Organization(oemail),
+        Foreign Key(hosting_email) references Organization(oemail)  on update cascade on delete restrict,
         Foreign Key(alemail) references Alumnus(uemail)
 );
 
