@@ -1,9 +1,11 @@
 
+import base64
 from decouple import config
 from flask import Flask, request, jsonify, session
 from flask_session import Session
 from flask_mysqldb import MySQL, MySQLdb
 from datetime import date, datetime
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
 
@@ -15,10 +17,11 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
 
-SESSION_TYPE = 'memcashed'
+SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
 Session(app)
 
+CORS(app)
 
 def get(dic, key, default):
     x = dic[key] if key in dic or not default else default[key]
@@ -45,26 +48,36 @@ def prepDict(dic):
 def index():
     return jsonify({"status": "running", "time": str(datetime.now())})
 
+def to_val(x):
+
+    if x is None:
+        return "null"
+
+    if isinstance(x, int):
+        return str(x)
+    
+    return f"'{x}'"
 
 @app.route('/login', methods=['POST'])
+@cross_origin()
 def login():
 
-    content = request.form
+    content = request.get_json()
     cursor = mysql.connection.cursor()
-    cursor.execute(f"""select email as uid from user where email='{content['email']}' and pass=sha1('{content['password']}') """)
+    cursor.execute(f"""select email as uid from user where email='{content['email']}' and pass = sha1('{content['password']}')""")
 
     rv = cursor.fetchone()
 
     if not rv:
         return jsonify("Wrong email/password"), 403
 
-    session['user'] = content['email'] 
-    return jsonify("Logged in"), 200
+    return jsonify(content['email']), 200
     
 
 
 
 @app.route("/users/<string:email>", methods=['GET', 'POST'])
+@cross_origin()
 def user(email):
     try:
 
@@ -114,12 +127,13 @@ def user(email):
 
             else:
 
-                insert_user_cmd = f"""INSERT INTO User(email, fname, lname, dob, linked_in, website, phone, gender)
-                                    VALUES('{email}', '{first_name}', '{last_name}',
+                insert_user_cmd = f"""INSERT INTO User(email,pass, fname, lname, dob, linked_in, website, phone, gender)
+                                    VALUES('{email}', sha1('{content['password']}'), '{first_name}', '{last_name}',
                             '{birth_date}','{linkedin}', '{website}', '{phone}', '{gender}')"""
                 cursor.execute(insert_user_cmd)
                 mysql.connection.commit()
                 cursor.close()
+
                 return jsonify('User added successfully.'), 200
 
                 
@@ -135,8 +149,8 @@ def _getUserType(email):
         rv = cursor.fetchone()
         cursor.close()
 
-        if rv == None:
-            return "S"
+        if rv != None:
+            return "M"
         else:
 
             cursor = mysql.connection.cursor()
@@ -146,9 +160,10 @@ def _getUserType(email):
 
             if rv == None:
                 return None
-            return "M"
+            return "S"
 
 @app.route("/users/<string:email>/type")
+@cross_origin()
 def getUserType(email):
 
     try:
@@ -313,12 +328,14 @@ def mentor(email):
                 return jsonify('User updated successfully.'), 200
 
             else:
+                
                 if _getUserType(email) == "S":
                     return jsonify("Already seeker"), 405
                 
                 #create
                 insert_user_cmd = f"""INSERT INTO Alumnus(uemail, work_email, position)
-                                    VALUES('{email}', '{org_id}', '{position}')"""
+                                    VALUES({to_val(email)}, {to_val(org_id)}, {to_val(position)})"""
+                print(insert_user_cmd)
                 cursor.execute(insert_user_cmd, ())
                 mysql.connection.commit()
                 return jsonify('User added successfully.'), 200
@@ -467,25 +484,30 @@ def seeker(email):
 
             content = request.get_json()
 
+            print(content)
+
             sop = get(content, "sop", rv)
-            open_to_work = get(content, "open_to_work", rv)
+            open_to_work = 1 if get(content, "open_to_work", rv) else 0
 
             if not rv:
 
                 if _getUserType(email) == "M":
                     return jsonify("Already mentor"), 405
 
-                insert_user_cmd = f"""INSERT INTO Student(sop, is_open_work)
-                                        VALUES({sop}, {open_to_work})"""
+                insert_user_cmd = f"""INSERT INTO Student(uemail, sop, is_open_work)
+                                        VALUES('{email}','{sop}', {open_to_work})"""
+                
+                print(insert_user_cmd)
                 cursor.execute(insert_user_cmd)
                 mysql.connection.commit()
                 return jsonify(
                     message='User added successfully.'), 200
 
             else:
-                update_user_cmd = """update Student
-                                    set sop='{sop}', is_open_work='{open_to_work}'
+                update_user_cmd = f"""update Student
+                                    set sop='{sop}', is_open_work={open_to_work}
                                     where uemail='{email}'"""
+                
                 cursor.execute(update_user_cmd)
                 mysql.connection.commit()
                 return jsonify('User updated successfully.'), 200
@@ -496,7 +518,7 @@ def seeker(email):
         return str(e), 500
 
 
-@app.route("/seekers/<string:email>/projects", methods = ["GET", "POST", "DELETE"])
+@app.route("/seekers/<string:email>/projects", methods = ["GET", "POST"])
 def projects(email):
     try:
 
@@ -510,25 +532,6 @@ def projects(email):
             rv = cursor.fetchall()
 
             return jsonify(prepDict(rv))
-
-        if request.method == "DELETE":
-            content = request.get_json()
-            
-            cursor = mysql.connection.cursor()
-            cursor.execute(f"""select name from projects 
-                                where date='{content['date']}' 
-                                and semail='{email}'""")
-
-            rv = cursor.fetchone()
-
-            if not rv:
-                return jsonify("Cannot delete"), 405
-
-            cursor.execute(f"""delete from projects 
-                                where date='{content['date']}' 
-                                and semail='{email}'""")
-            mysql.connection.commit()
-            return jsonify("deleted successfully"), 200
 
         if request.method == "POST":
 
@@ -568,7 +571,30 @@ def projects(email):
         return str(e), 500
 
 
-@app.route("/seekers/<string:email>/certifications", methods = ["GET", "POST", "DELETE"])
+@app.route("/seekers/<string:email>/projects/delete/<string:date>", methods=['DELETE'])
+def deleteProject(email, date):
+    
+    print(email, date)
+
+    cursor = mysql.connection.cursor()
+    query = f"""select name from projects 
+                        where date='{date}' 
+                        and semail='{email}'"""
+
+    cursor.execute(query)
+    rv = cursor.fetchone()
+
+    if not rv:
+        return jsonify("Cannot delete"), 405
+
+    cursor.execute(f"""delete from projects 
+                        where date='{date}' 
+                        and semail='{email}'""")
+    mysql.connection.commit()
+    return jsonify("deleted successfully"), 200
+
+
+@app.route("/seekers/<string:email>/certifications", methods = ["GET", "POST"])
 def certifications(email):
     try:
 
@@ -583,25 +609,6 @@ def certifications(email):
 
             return jsonify(prepDict(rv))
 
-        if request.method == "DELETE":
-            content = request.get_json()
-            
-            cursor = mysql.connection.cursor()
-            cursor.execute(f"""select name from certifications 
-                                where url='{content['url']}' 
-                                and semail='{email}'""")
-
-            rv = cursor.fetchone()
-
-            if not rv:
-                return jsonify("Cannot delete"), 405
-
-            cursor.execute(f"""delete from certifications 
-                                where url='{content['url']}' 
-                                and semail='{email}'""")
-            mysql.connection.commit()
-            return jsonify("deleted successfully"), 200
-
         if request.method == "POST":
 
             content = request.get_json()
@@ -615,11 +622,13 @@ def certifications(email):
 
             url = get(content, 'url', rv)
             name = get(content, 'name', rv)
+            date = get(content, 'date', rv)
 
             if rv:
                 cursor.execute(f"""update certifications 
-                                    set name='{name}'
-                                    where url='{content['url']}' 
+                                    set name='{name}', date = '{date}'
+
+                                    where url='{url}' 
                                     and semail='{email}'""")
                 
                 mysql.connection.commit()
@@ -627,8 +636,8 @@ def certifications(email):
                 return jsonify("Updated successfully"), 200
             else:
 
-                query = f"""insert into projects ( description, name, date, semail)
-                                    values ('{description}','{name}','{content['date']}','{email}')"""
+                query = f"""insert into certifications ( url, name, date, semail)
+                                    values ('{url}','{name}','{content['date']}','{email}')"""
                 
                 cursor.execute(query)
                 mysql.connection.commit()
@@ -638,6 +647,25 @@ def certifications(email):
         print(e)
         return str(e), 500
 
+@app.route("/seekers/<string:email>/certifications/delete", methods = ["DELETE"])
+def deleteCertification(email):
+
+    url = request.args['url']
+    cursor = mysql.connection.cursor()
+    cursor.execute(f"""select name from certifications 
+                        where url='{url}' 
+                        and semail='{email}'""")
+
+    rv = cursor.fetchone()
+
+    if not rv:
+        return jsonify("Cannot delete"), 405
+
+    cursor.execute(f"""delete from certifications 
+                        where url='{url}' 
+                        and semail='{email}'""")
+    mysql.connection.commit()
+    return jsonify("deleted successfully"), 200
 
 @app.route("/seekers/<string:email>/skills", methods = ["GET", "POST"])
 def skills(email):
@@ -702,13 +730,12 @@ def getFields():
     try:
 
         cursor = mysql.connection.cursor()
-        content = request.get_json()
+        content = request.args
 
         match_name_segment = "f.ofname like '%{}%'"
         match_description_segment = "f.description like '%{}%'"
 
         where_list = []
-        join_segment = ""
         sort_by = ""
 
         if 'search' in content:
@@ -777,11 +804,27 @@ def followField():
 
             if rv:
                 return jsonify("Already followed"), 200
+
             
             query = f'insert into will_to_work(ofname, semail) values ("{content["name"]}" ,"{content["uid"]}")'
             cursor.execute(query)
             mysql.connection.commit()
             return jsonify('followed'), 200
+    except Exception as e:
+        print(e)
+        return jsonify('Failed to follow. '+str(e)), 500
+
+@app.route("/fields/unfollow", methods=[ 'POST'])
+def unfollowField():
+    try:
+        content = request.get_json()
+        cursor = mysql.connection.cursor()
+        query = f'delete from will_to_work where ofname="{content["name"]}" and semail ="{content["uid"]}"'
+        
+        cursor.execute(query)
+        mysql.connection.commit()
+        return jsonify('unfollowed'), 200
+
     except Exception as e:
         print(e)
         return jsonify('Failed to follow. '+str(e)), 500
@@ -792,16 +835,19 @@ def field():
     try:
 
         
-        content = request.get_json()
         
         if request.method == "GET":
+            content = request.args
             cursor = mysql.connection.cursor()
             cursor.execute(f"""select ofname as id, ofname as name, description
                             from opportunity_field
-                            where ofname = '{content['id']}'""")
+                            where ofname = '{content['name']}'""")
             rv = cursor.fetchone()
 
             return jsonify(prepDict(rv)), 200
+
+        
+        content = request.get_json()
 
         if request.method == "POST":
             # add new field
@@ -812,11 +858,10 @@ def field():
             return jsonify("Added"), 200
 
         if request.method == "PATCH":
+            
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""update opportunity_field set description='{content['description']}' where ofname='{content['id']}'""")
+            cursor.execute(f"""update opportunity_field set ofname='{content['name']}', description='{content['description']}' where ofname='{content['id']}'""")
             mysql.connection.commit()
-
-            return jsonify("Edited"), 200
 
         if request.method == "DELETE":
             cursor = mysql.connection.cursor()
@@ -824,6 +869,11 @@ def field():
             mysql.connection.commit()
 
             return jsonify("Deleted"), 200
+            
+
+            return jsonify("Edited"), 200
+
+        
 
     except MySQLdb._exceptions.IntegrityError as e:
         return jsonify('Already exists'), 405
@@ -837,18 +887,15 @@ def getOrganizations():
     try:
 
         cursor = mysql.connection.cursor()
-        #content = request.get_json()
-        content = {
-            'search': "Croatia"
+        content = request.args
 
-        }
-
+        print(content)
+    
         match_search = [
             "org.oname like '%{}%'",
             "org.olocation like '%{}%'",
             "org.website like '%{}%'",
         ]
-
 
         where_list = []
         join_segment = ""
@@ -912,7 +959,6 @@ def getOrganizations():
 @app.route("/organizations/<string:oemail>", methods=['GET', 'POST', 'PATCH', 'DELETE'])
 def organization(oemail):
     try:
-
 
         if request.method=='GET':
             cursor = mysql.connection.cursor()
@@ -986,19 +1032,24 @@ def organization(oemail):
 
             name = get(content, 'name', rv)
             website = get(content, 'website', rv)
+            email = get(content, 'email', rv)
             location = get(content, 'location', rv)
             is_educational = 1 if get(content, 'is_educational', rv) else 0
-            insert_user_cmd = """Update organization set oname='{}',website='{}',olocation='{}',is_educational='{}' where oemail='{}'"""
+            insert_user_cmd = """Update organization set oname='{}',website='{}',olocation='{}',is_educational='{}', oemail='{}' where oemail='{}'"""
             cursor.execute(insert_user_cmd.format(name,
-                        website, location, is_educational, oemail))
+                        website, location, is_educational,email , oemail))
             mysql.connection.commit()
 
             
             return jsonify("Added"),200
 
         if request.method == "DELETE":
+            cursor = mysql.connection.cursor()
             insert_user_cmd = """delete from organization where oemail='{}'"""
             cursor.execute(insert_user_cmd.format(oemail))
+            mysql.connection.commit()
+
+            return jsonify('deleted'), 200
 
     except Exception as e:
         raise(e)
@@ -1008,7 +1059,7 @@ def organization(oemail):
 @app.route("/organizations/names")
 def organizationNames():
     try:
-
+        
         cursor = mysql.connection.cursor()
         cursor.execute("select oemail as org_id, oname as org_name from Organization_name order by oname")
         rows = cursor.fetchall()

@@ -29,7 +29,7 @@ export default function Users(props){
     
 
     function search(){
-        console.log(query)
+         
         api.getUsers(query, setData);
     }
 

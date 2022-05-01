@@ -2,7 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import Login from "./pages/Login/Login";
 import Signup from './pages/Signup/Signup';
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import Main from "./pages/Main/Main";
 
 import {
@@ -14,10 +14,21 @@ import {
 import { UserContext } from './Context';
 
 
+import { ReactSession } from 'react-client-session';
 
 function App() {
 
-  const [user, setUser] = useState('1');
+  const [user, setUser] = useState(ReactSession.get('user'));
+
+  useEffect(
+    ()=>{
+
+      if(user)
+        ReactSession.set('user', user)
+    }
+    ,[user]
+  )
+
   return (
     <div className="App">
       <Router>
@@ -25,11 +36,11 @@ function App() {
         {/* A <Switch> looks through its children <Route>s and
             renders the first one that matches the current URL. */}
         <Routes>
-          <Route path="/signup/mentor" element={<Signup type={"mentor"}></Signup>}>
+          <Route path="/signup/mentor" element={<Signup type={"mentor"} onLogin={setUser}></Signup>}>
             
           </Route>
           <Route path="/signup/seeker" element={
-            <Signup type={"seeker"}></Signup>}>
+            <Signup type={"seeker"} onLogin={setUser}></Signup>}>
           </Route>
           <Route path={"/"}>
 

@@ -8,7 +8,7 @@ export function ListView(props) {
         props.search(props.query);
     }
 
-    console.log(props)
+     
     return (
         <div className="list-view">
             <header>

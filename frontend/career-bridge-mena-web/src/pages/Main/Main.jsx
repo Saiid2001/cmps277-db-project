@@ -17,6 +17,7 @@ import NewOpportunity from "./tabs/opportunities/NewOpportunity"
 import DetailsOpportunity from "./tabs/opportunities/DetailsOpportunity"
 import Users from "./tabs/profile/Users"
 import Select from "react-select"
+import { type } from "@testing-library/user-event/dist/type"
 
 export const UserDataContext = React.createContext("user-data")
 export const OrganizationsContext = React.createContext('orgs')
@@ -45,11 +46,21 @@ export default function Main(props){
             api.getUser(uid, setUser)
             api.getUserType(uid, setUserType)
         }
-        api.getAllOrganizationNames(setOrgs)
-        }
-    })
+
+        api.getAllOrganizationNames(x=>{setOrgs(x)})
+        
+    }
+    }, [userType])
 
     var tab = null;
+
+    useEffect(()=>{
+
+        if(orgs.length && typeof(orgs) == typeof("")){
+            setOrgs(JSON.parse(orgs))
+        }
+
+    }, [orgs])
 
     switch (props.tab) {
         case "profile":
@@ -114,7 +125,7 @@ export default function Main(props){
             break;
     }
 
-    
+    if (orgs.length)
     return <div className="main">
     
         <header>
@@ -155,6 +166,9 @@ export default function Main(props){
         </OrganizationsContext.Provider>
         </UserContext.Provider>
     </div>
+
+
+    return null
 
 }
 

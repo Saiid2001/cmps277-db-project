@@ -38,7 +38,7 @@ export default function NewOpportunity(props){
         formProps.field_id = selectedField;
         formProps.org_id = selectedOrg;
         
-        console.log(formProps)
+         
         props.edit?api.editOpportunity(props.id, formProps, ()=>{window.location="/opportunities"}):api.addOpportunity(contextUser, formProps, ()=>{window.location="/opportunities"});
     
     
@@ -66,7 +66,7 @@ export default function NewOpportunity(props){
     }
 
 
-    console.log(allOrgs.filter(x=> x.org_id == data.org_id))
+     
     return (
         <form id="new-field" className="add-entity-form" onSubmit={handleSubmit}>
             {props.edit?<h1>Edit Opportunity</h1>:<h1>New Opportunity</h1>}

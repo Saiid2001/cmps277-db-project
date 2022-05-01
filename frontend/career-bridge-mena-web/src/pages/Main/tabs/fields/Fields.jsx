@@ -22,7 +22,7 @@ export default function Fields(props){
     
 
     function search(){
-        console.log(query)
+        console.log('h')
         api.getFields(query, setData);
     }
 
@@ -48,7 +48,6 @@ export default function Fields(props){
         search();
 
     }
-
 
     return <div id="fields-tab" className="tab">
 
@@ -91,12 +90,14 @@ function FollowedFieldsContent(props){
 
     const contextUser = useContext(UserContext);
     const [data, setData] = useState([]);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
-        if (!("n_fields" in data)) {
+        if (!(loaded)) {
             api.getFollowedFields(contextUser, setData);
+            setLoaded(true)
         }
-    });
+    }, [loaded]);
 
 
     return (
@@ -162,6 +163,7 @@ function FieldListItem(props){
     }
 
     function deleteField(){
+        
         api.deleteField(props.data.id, ()=>{window.location.reload(false);});
         
     }

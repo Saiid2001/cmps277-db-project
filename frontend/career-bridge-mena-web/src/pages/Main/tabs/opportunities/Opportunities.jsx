@@ -36,7 +36,7 @@ export default function Opportunities(props){
                 sort_by: searchParams.get('sort_by')
             }
 
-            console.log(query)
+             
             api.getOpportunities(userContext, query, setData)
             api.getFields({}, (data)=>{ data.push({id:-1,name:"No Field Filter"}); setAllFields(data)})
             api.getAllOrganizationNames((data)=>{ data.push({org_id:-1,org_name:"No Organization Filter"}); setAllOrgs(data)})
@@ -46,7 +46,7 @@ export default function Opportunities(props){
 
     function search(){
 
-        console.log(query)
+         
         api.getOpportunities(userContext, query, setData)
     }
 
@@ -153,7 +153,7 @@ function PostedOpportunities(props){
     const [loaded, setLoaded] = useState(false)
 
     const userContext = useContext(UserContext);
-    console.log('h')
+     
 
     useEffect(() => {
         if (!loaded) {
@@ -182,7 +182,7 @@ function AssociatedOpportunities(props){
     const [loaded, setLoaded] = useState(false)
 
     const userContext = useContext(UserContext);
-    console.log('h')
+     
 
     useEffect(() => {
         if (!loaded) {
@@ -212,7 +212,7 @@ function MatchedSeekerOpportunities(props){
     const [loaded, setLoaded] = useState(false)
 
     const userContext = useContext(UserContext);
-    console.log('h')
+     
 
     useEffect(() => {
         if (!loaded) {
@@ -270,7 +270,7 @@ function MatchedMentorOpportunities(props){
     const [loaded, setLoaded] = useState(false)
 
     const userContext = useContext(UserContext);
-    console.log('h')
+     
 
     useEffect(() => {
         if (!loaded) {
@@ -393,7 +393,7 @@ function SummaryOpportunityListItem(props){
 }
 
 
-function OpportunityListItem(props){
+export function OpportunityListItem(props){
 
     
     const userType = useContext(TypeContext);

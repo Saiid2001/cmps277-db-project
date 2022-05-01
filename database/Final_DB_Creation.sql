@@ -44,7 +44,7 @@ Create Table alumnus(
     uemail Varchar(200) NOT NULL,
     score int default 0,
     position Varchar(50),
-    work_email Varchar(200) Not Null,
+    work_email Varchar(200),
     Foreign key (uemail) references User(email) On delete cascade,
     Foreign key (work_email) references Organization(oemail)On delete cascade
 );

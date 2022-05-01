@@ -4,7 +4,7 @@ import api from "../../../../api";
 export default function NewOrganization(props){
 
     const [data, setData] = useState({})
-    console.log(props)
+     
 
     useEffect(()=>{
         if(!("id" in data) && props.edit){
@@ -17,6 +17,7 @@ export default function NewOrganization(props){
 
         const formData = new FormData(e.target);
         const formProps = Object.fromEntries(formData);
+
         props.edit?api.editOrganization(props.id, formProps, ()=>{window.location="/organizations"}):api.addOrganization(formProps, ()=>{window.location="/organizations"});
     }
 

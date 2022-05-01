@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../../../../api";
 import { Card } from "../../../../components/Card";
+import { ListView } from "../../../../components/ListView";
+import { OpportunityListItem } from "../opportunities/Opportunities";
 
 export default function DetailsOrganization(props){
 
     const [data, setData] = useState({})
-
+    const [opps, setOpps] = useState([])
     useEffect(()=>{
         if(!("id" in data)){
             api.getOrganization(props.id, setData);
+            api.getOpportunities({
+                org_id: data.id
+            }, setOpps)
         }
     }, [data])
 
@@ -44,15 +49,15 @@ export default function DetailsOrganization(props){
 
             <div>
             <div className="card-count">
-            <p>{data.min_compensation+"$"}</p>
+            <p>{Math.floor(data.min_compensation)+"$"}</p>
             <label>Min $</label>
             </div>
             <div className="card-count">
-            <p>{data.avg_compensation+"$"}</p>
+            <p>{Math.floor(data.avg_compensation)+"$"}</p>
             <label>Av. $</label>
             </div>
             <div className="card-count">
-            <p>{data.max_compensation+"$"}</p>
+            <p>{Math.floor(data.max_compensation)+"$"}</p>
             <label>Max $</label>
             </div>
             </div>
@@ -60,7 +65,22 @@ export default function DetailsOrganization(props){
     </Card>
 
     <Card title={"Related Opportunities"} editButton={false}>
-
+    <ListView 
+            data={opps}
+            sort_fields = {
+                [
+                    {label: "Compensation", value: "compensation" },
+                    {label: "Seekers", value: "seekers" },
+                    {label: "Mentors", value: "mentors" },
+                    {label: "Deadline", value: "deadline" },
+                ]
+            }
+            query = {{}}
+            search={()=>{}}
+            ListItemTemplate = {OpportunityListItem}
+            >
+            </ListView>
+        
     </Card>
 
     </section>

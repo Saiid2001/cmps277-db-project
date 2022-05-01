@@ -8,6 +8,7 @@ import { UserDataContext, OrganizationsContext } from "../../Main";
 
 import { Card } from "../../../../components/Card"
 import { ListContent } from "../../../../components/ListContent"
+import { type } from "@testing-library/user-event/dist/type";
 
 
 export default function Profile(props){
@@ -63,7 +64,7 @@ export default function Profile(props){
                 <div></div>
             </Card>:null}
 
-            {userType==api.USER_TYPES.Mentor?<Card title="Skills" editButton={true}>
+            {userType==api.USER_TYPES.Seeker?<Card title="Skills" editButton={true}>
                 <SkillsContent></SkillsContent>
                 <div></div>
             </Card>:null}
@@ -84,10 +85,14 @@ export function ProfileInfoContent(props) {
     function handleSubmit(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const formProps = Object.fromEntries(formData);
+        let formProps = Object.fromEntries(formData);
 
-        api.setUser(contextUser, formProps);
+        formProps.email = contextUser;
+
+        api.setUser( formProps);
     }
+
+     
 
     return <div className="info">
         <form id="profile-info-form" onSubmit={handleSubmit}>
@@ -97,12 +102,12 @@ export function ProfileInfoContent(props) {
                 <input type={"text"} name={"last_name"} placeholder={"Last Name"} required {...!props.edit ? { "disabled": true } : ""} defaultValue={user.last_name}></input>
                 <label htmlFor="birth_date">Birth-date</label>
                 <input type={"date"} id="birth_date" name={"birth_date"} placeholder={"Birth date"} required {...!props.edit ? { "disabled": true } : ""} defaultValue={user.birth_date}></input>
-                <div className="gender">
-                    <input type="radio" id="gender-m" name="gender" value="M" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "M"}></input>
+                {user.gender?<div className="gender">
+                    <input type="radio" id="gender-m" name="gender" value="M" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Male"}></input>
                     <label htmlFor="gender-m">Male</label>
-                    <input type="radio" id="gender-f" name="gender" value="F" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "F"}></input>
+                    <input type="radio" id="gender-f" name="gender" value="F" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Female"}></input>
                     <label htmlFor="gender-f">Female</label>
-                </div>
+                </div>:null}
             </section>
             <section>
                 <h2>Additional Info</h2>
@@ -157,13 +162,15 @@ export function MentorPositionContent(props) {
     }
 
     let url = null;
+    let opts = [];
 
+    if (orgs.length && typeof(orgs) == typeof([1,2])){
     if ("position" in data) {
         url = <a href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == data.org_id).org_name}</a>;
     }
 
-    const opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
-
+     opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+    }
     return <section className="mentor-info">
         <h1>Mentor</h1>
         <div>
@@ -215,9 +222,9 @@ export function SeekerInfoContent(props) {
         <h1>Seeker</h1>
         <div>
             <form id="seeker-info-form" onSubmit={handleSubmit}>
-                <div><input type={"checkbox"} name={"open_to_work"} id="open_to_work_bx" {...!props.edit ? { "disabled": true } : ""} defaultChecked={data.open_to_work} value="true"></input>
+                {data.open_to_work != null?<div><input type={"checkbox"} name={"open_to_work"} id="open_to_work_bx" {...!props.edit ? { "disabled": true } : ""} defaultChecked={data.open_to_work} value="true"></input>
                     <label htmlFor="open_to_work_bx">Open to work</label>
-                </div>
+                </div>:null}
 
                 <textarea name="sop" id="sop" placeholder="statment of purpose" {...!props.edit ? { "disabled": true } : ""} defaultValue={data.sop}>
 
@@ -235,7 +242,6 @@ export function EducationRecord(props) {
     const [selectedOrg, setSelectedOrg] = useState("");
     const orgs = useContext(OrganizationsContext);
     const [accomplishments, setAccomplishments] = useState(props.data.accomplishments);
-    const [data, setData] = useState(props.data);
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -255,17 +261,24 @@ export function EducationRecord(props) {
 
         formProps.accomplishments = accomplishments;
 
+        formProps.id = props.data.id? props.data.id: 0;
+
         api.setEducation(contextUser, formProps);
 
     }
 
     let url = null;
 
+    let opts = [];
+
+    if(orgs.length){
+
     if ("org_id" in props.data) {
         url = <a className="university" href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == props.data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == props.data.org_id).org_name}</a>;
     }
 
-    const opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+    opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+    }
 
     function onSelectChange(val, act) {
 
@@ -368,20 +381,28 @@ export function ExperienceRecord(props) {
 
         formProps.accomplishments = accomplishments;
 
+        formProps.id = props.data.id? props.data.id: 0;
+
         api.setExperience(contextUser, formProps);
+
+        if(formProps.id == 0) window.location.reload();
 
     }
 
 
     //url part
     let url = null;
+    let opts = [];
 
-    if ("org_id" in props.data) {
+    if(orgs.length){
+    if ("org_id" in props.data || props.data.type == "new") {
         url = <a className="university" href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == props.data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == props.data.org_id).org_name}</a>;
+        console.log(selectedOrg)
     }
-
     //select
-    const opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+     opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+
+    }
 
     function onSelectChange(val, act) {
         if (act.action == "select-option")
@@ -411,7 +432,6 @@ export function ExperienceRecord(props) {
         api.deleteExperience(contextUser, props.data);
         props.onDelete();
     }
-
 
     return <div className="education_records">
 
@@ -448,6 +468,9 @@ export function ProjectRecord(props) {
 
         const formData = new FormData(e.target);
         const formProps = Object.fromEntries(formData);
+
+        if( props.data.type != "new" && props.data.date != formProps.date)
+            api.deleteProject(contextUser, props.data)
 
         api.setProject(contextUser, formProps);
     }
@@ -503,6 +526,9 @@ export function CertificationRecord(props) {
 
         const formData = new FormData(e.target);
         const formProps = Object.fromEntries(formData);
+
+        if( props.data.type != "new" && props.data.url != formProps.url)
+            api.deleteCertification(contextUser, props.data)
 
         api.setCertification(contextUser, formProps);
     }
@@ -574,8 +600,8 @@ export function SkillsContent(props) {
         actionMeta
     ) {
         console.group('Value Changed');
-        console.log(newValue);
-        console.log(`action: ${actionMeta.action}`);
+         
+         
         console.groupEnd();
 
         setSkills(newValue.map(x => x.value));

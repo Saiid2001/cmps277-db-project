@@ -4,3 +4,4 @@ database/.env
 backend/cmps277(1)/.env
 backend/.env
 database/__pycache__
+backend/flask_session

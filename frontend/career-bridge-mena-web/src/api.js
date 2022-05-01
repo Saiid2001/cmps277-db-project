@@ -1,14 +1,41 @@
+import axios from 'axios';
+
+import { ReactSession } from 'react-client-session';
+
+const API_BASE = "http://127.0.0.1:5000/";
+
 export default {
 
+
+    login: async (email, password, onSuccess=null, onFail=null) => {
+
+        axios.post(
+            API_BASE+"login",
+            {
+                email: email,
+                password: password
+            }
+        )
+        .catch(res=>{
+             
+            onFail()
+        })
+        .then(res=>{
+             
+            onSuccess?.(res.data)
+        })
+    },
     getUser: async (uid, onSuccess=null, onFail=null) => {
-        onSuccess?.({
-            uid: uid,
-            first_name: "Saiid",
-            last_name: "El Hajj Chehade",
-            birth_date: "2001-06-22",
-            linkedin: "/linkedin/saiidhajjchehade",
-            website: "www.saiid.com",
-            phone: "78818109"
+
+        axios.get(
+            API_BASE+"users/"+uid,
+        )
+        .then(res=>{
+             
+            onSuccess?.(res.data)
+        })
+        .catch(()=>{
+            ReactSession.set('user', null)
         })
     },
 
@@ -18,285 +45,392 @@ export default {
     }
 
     ,getUserType: async (uid, onSuccess=null, onFail=null) =>{
-        onSuccess?.(
-            "M"
-        )
+
+        axios.get(
+            API_BASE+"users/"+uid+"/type"
+        ).then(res=>{
+
+             
+            onSuccess?.(
+              res.data
+           )
+        }).catch(onFail)
+        
     },
 
-    setUser: async (uid, info, onSuccess = null, onFail = null)=>{
-        info.uid=uid
-        console.log(info)
+    
+
+    signup: async (info, onSuccess = null, onFail = null)=>{
+         
+
+        axios.post(
+            API_BASE+"users/"+info.email,
+            info
+        )
+        .catch(res=>{
+             
+            onFail?.()
+        })
+        .then(res=>{
+             
+
+            if(info.is_seeker){
+            axios.post(
+                API_BASE+"seekers/"+info.email,
+                {
+                    sop: "",
+                    open_to_work: false,
+                }
+            )
+            .catch(res=>{
+                 
+                onFail?.()})
+            .then(
+                res2=>{
+                     
+                    onSuccess?.(info.email)
+                }
+            )
+            }
+            else{
+                axios.post(
+                    API_BASE+"mentors/"+info.email,
+                    {
+                        org_id: null,
+                        position: null
+                    }
+                )
+                .catch(res=>{
+                     
+                    onFail?.()})
+                .then(
+                    res2=>{
+                         
+                        onSuccess?.(info.email)
+                    }
+                )
+            }
+        })
+        // first_name, last_name, birth_date, linkedin, website, phone, gender
+    },
+
+    setUser: async (info, onSuccess = null, onFail = null)=>{
+         
             
+        axios.post(
+            API_BASE+"users/"+info.email,
+            info
+        )
+        .catch(res=>{
+             
+            onFail?.()
+        })
+        .then(res=>{
+             
+            onSuccess?.(res.data)
+        })
         // first_name, last_name, birth_date, linkedin, website, phone, gender
     },
 
     getCurrentPosition: async(uid, onSuccess = null, onFail = null)=>{
 
-        console.log("h")
-        onSuccess?.(
-            {
-                "position": "Analysit",
-                "org_name": "BCG",
-                "org_id": "1"
-            }
+        axios.get(
+            API_BASE+"mentors/"+uid,
         )
+        .catch(onFail)
+        .then(res =>{
+
+            onSuccess?.(res.data)
+        })
 
     },
 
     setCurrentPosition: async(uid, info, onSuccess = null, onFail = null)=>{
-        console.log(info)
+         
+
+        axios.post(
+            API_BASE+"mentors/"+uid,
+            info
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        })
         
         //position org_id
     },
 
     getAllOrganizationNames: async( onSuccess = null, onFail = null)=>{
-        onSuccess?.(
-            [
-                {"org_name": "BCG" , "org_id": "1"},
-                {"org_name": "ABC" , "org_id": "2"},
-                {"org_name": "Total" , "org_id": "3"},
-            ]
+        axios.get(
+            API_BASE+"organizations/names"
         )
+        .then(res=>{
+            
+            res.data.push({'org_name':"HARD1", 'org_id':'1'})
+            res.data.push({'org_name':"HARD2", 'org_id':'2'})
+            res.data.push({'org_name':"HARD3", 'org_id':'3'})
+            onSuccess?.(JSON.stringify(res.data))
+        })
+
+        /*onSuccess?.([
+            {'org_name':"HARD1", 'org_id':'1'},
+            {'org_name':"HARD2", 'org_id':'2'},
+            {'org_name':"HARD3", 'org_id':'3'}
+        ])*/
     }, 
 
     getSeekerData: async (uid, onSuccess=null, onFail=null)=>{
 
-        onSuccess?.(
-            {
-                'sop': "this is statement of purose",
-                'open_to_work': true
-            }
+        axios.get(
+            API_BASE+"seekers/"+uid
         )
+        .then(res=>{
+            onSuccess?.(res.data)
+        })
     },
 
     setSeekerData: async (uid, info, onSuccess=null, onFail=null)=>{
 
         console.log(info)
+        axios.post(
+            API_BASE+"seekers/"+uid,
+            info
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
         
         // sop, open_to_work
 
     },
 
     getEducations: async (uid, onSuccess=null, onFail=null)=>{
-
-        onSuccess?.(
-            [
-                {
-                    "major": "Computer Communication Engineering",
-                    "org_id": "1",
-                    "org_name": "American University of Beirut",
-                    "score": "4.0 GPA",
-                    "accomplishments":[
-                        "a1","a2"
-                    ],
-                    "start_at": "2020-03-21",
-                    "end_at": "2020-03-21"
-                },
-                {
-                    "major": "Computer Communication Engineering",
-                    "org_id": "1",
-                    "org_name": "American University of Beirut",
-                    "score": "4.0 GPA",
-                    "accomplishments":[
-                        "a1","a2"
-                    ],
-                    "start_at": "2020-03-21",
-                    "end_at": "2020-04-21"
-                },
-            ]
+        
+        axios.get(
+            API_BASE+"users/"+uid+"/education"
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
 
     },
 
     deleteEducation: async (uid, program, onSuccess=null, onFail=null)=>{
-        console.log(program)
+         
         
+        axios.delete(
+            API_BASE+"users/"+uid+"/education/"+program.id
+        )
         //program id
     },
 
     setEducation: async (uid, program, onSuccess=null, onFail=null)=>{
-        console.log(program)
+
+        
+        axios.post(
+            API_BASE+"users/"+uid+"/education/"+program.id,
+            program
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
     
 
     getExperiences: async (uid, onSuccess=null, onFail=null)=>{
-        onSuccess?.(
-            [
-               {
-                   "position": "Analyst",
-                   "org_id": "2",
-                   "org_name":"Analytica",
-                   "start_at": "2020-03-03",
-                   "end_at": "2021-03-04",
-                   "accomplishments":["a", "b", "c"]
-               } 
-            ]
+        axios.get(
+            API_BASE+"mentors/"+uid+"/experience"
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     setExperience: async (uid, experience, onSuccess=null, onFail=null)=>{
-        console.log(experience)
+        axios.post(
+            API_BASE+"mentors/"+uid+"/experience/"+experience.id,
+            experience  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
     deleteExperience: async (uid, experience, onSuccess=null, onFail=null)=>{
-        console.log(experience)
+        axios.delete(
+            API_BASE+"mentors/"+uid+"/experience/"+experience.id
+        )
     },
 
     getProjects: async (uid, onSuccess=null, onFail=null)=>{
-        onSuccess?.(
-            [
-                {
-                    "name": "this is a project bla",
-                    "description": "djfiokenfen fewof edf aj fedna fr ke fedn afek kd fa ewjk dfaK QERFAEF",
-                    "date":"2020-03-03"
-                }
-            ]
+        axios.get(
+            API_BASE+"seekers/"+uid+"/projects"
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     setProject: async (uid, project, onSuccess=null, onFail=null)=>{
-        console.log(project)
+         
+        axios.post(
+            API_BASE+"seekers/"+uid+"/projects",
+            project  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
+        // date and user email are keys
     },
     deleteProject: async (uid, project, onSuccess=null, onFail=null)=>{
-        console.log(project)
+
+        axios.delete(
+            API_BASE+"seekers/"+uid+"/projects/delete/"+project.date
+        )
     },
     getCertifications: async (uid, onSuccess=null, onFail=null)=>{
-        onSuccess?.(
-            [
-                {
-                    "name": "this is a project bla",
-                    "url": "https://www.google.com",
-                    "date":"2020-03-03"
-                }
-            ]
+        axios.get(
+            API_BASE+"seekers/"+uid+"/certifications"
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     setCertification: async (uid, project, onSuccess=null, onFail=null)=>{
-        console.log(project)
+        axios.post(
+            API_BASE+"seekers/"+uid+"/certifications",
+            project  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
     deleteCertification : async (uid, project, onSuccess=null, onFail=null)=>{
-        console.log(project)
+
+        axios.delete(
+            API_BASE+"seekers/"+uid+"/certifications/delete?url="+project.url,  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
     getSkills: async (uid, onSuccess=null, onFail=null)=>{
-        onSuccess?.(
-            [
-                "skill 1",
-                "skill 2"
-            ]
+        axios.get(
+            API_BASE+"seekers/"+uid+"/skills"
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     setSkills: async (uid, skills, onSuccess=null, onFail=null)=>{
-        console.log(skills)
+        axios.post(
+            API_BASE+"seekers/"+uid+"/skills",
+            skills  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
     
     getFollowedFields: async (uid, onSuccess=null, onFail = null)=>{
-        onSuccess?.(
-            [
-                    {
-                        id: "2",
-                        name: "Field 1",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    },
-                    {
-                        id: "3",
-                        name: "Field 2",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    },
-                    {
-                        id: "4",
-                        name: "Field 3",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    },
-                    {
-                        id: "5",
-                        name: "Field 4",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    }
-                    ,
-                    {
-                        id: "6",
-                        name: "Field 4",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    }
-                    ,
-                    {
-                        id: "7",
-                        name: "Field 4",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    }
-                    ,
-                    {
-                        id: "8",
-                        name: "Field 4",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    }
-                    ,
-                    {
-                        id: "9",
-                        name: "Field 4",
-                        n_seekers: 100,
-                        n_opportunities: 200,
-                    }
-                ]
-
-            
+        
+        axios.get(
+            API_BASE+"fields",
+            {
+              params: {'follower_id': uid}
+            }
         )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     unfollowField: async (uid, fieldId, onSuccess=null, onFail=null)=>{
-        console.log("unfollowed "+fieldId);
-        onSuccess?.()
+         
+        axios.post(
+            API_BASE+"fields/unfollow",
+            {
+                'name': fieldId,
+                'uid':uid
+            }  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
     followField: async (uid, fieldId, onSuccess=null, onFail=null)=>{
-        console.log("followed "+fieldId);
-        onSuccess?.()
+         
+        axios.post(
+            API_BASE+"fields/follow",
+            {
+                'name': fieldId,
+                'uid':uid
+            }  
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
     getFields: async (query, onSuccess=null, onFail = null)=>{
         //query keys 
-        // name: the search string or null if no search string exists
+        // search: the search string or null if no search string exists
         // sort_by: boolean to sort results. values: "name", "seekers", "opp", or "" for no sort
 
-        onSuccess?.([
+        // follower_id for followed by
+
+        let data = {"testing": "n"}
+
+        if(query.name) data.search = query.name
+        if(query.sort_by) data.sort_by = query.sort_by
+        if(query.follower_id) data.follower_id = query.follower_id
+
+
+        axios.get(
+            API_BASE+"fields",
             {
-                "id": 1,
-                "name": "Software",
-                "description": "djfiokenfen fewof edf aj fedna fr ke fedn afek kd fa ewjk dfaK QERFAEF",
-                "n_seekers": 10,
-                "n_opportunities": 100,
-            },
-            {
-                "id": 2,
-                "name": "Hardware",
-                "description": "djfiokenfen fewof edf aj fedna fr ke fedn afek kd fa ewjk dfaK QERFAEF",
-                "n_seekers": 100,
-                "n_opportunities": 10,
+               params: data
             }
-        ])
+        )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     getField: async (id, onSuccess=null, onFail = null)=>{
         //query keys 
         // id: id of field
 
-        onSuccess?.(
+        axios.get(
+            API_BASE+"fields/field",
             {
-                "id": 1,
-                "name": "this is a field bla",
-                "description": "djfiokenfen fewof edf aj fedna fr ke fedn afek kd fa ewjk dfaK QERFAEF",
-               
+              params: {'name': id}
             }
-            )
+        )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
+
     },
 
     addField: async (field, onSuccess=null, onFail=null)=>{
@@ -305,89 +439,85 @@ export default {
         // name: string
         // description: string
 
-        console.log(field);
-        onSuccess?.();
+        axios.post(
+            API_BASE+"fields/field",
+            field
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
     editField: async (id, field, onSuccess=null, onFail=null)=>{
 
 
+        console.log(id, field)
         const data = {
             "id": id,
             "name": field.name,
             "description": field.description
         }
 
+        axios.patch(
+            API_BASE+"fields/field",
+            data
+        )
+        .catch(onFail)
+        .then(res=>{
 
-
-        console.log(data);
-        onSuccess?.();
+            onSuccess?.(res.data)
+        }) 
     },
 
     deleteField: async (id, onSuccess=null, onFail=null)=>{
 
-
-        const data = {
-            "id": id,
-        }
-
-        console.log(data);
-        onSuccess?.();
+        axios.delete(
+            API_BASE+"fields/field",
+            {
+                data:{
+                    "id":id
+                }
+            }
+        )
+        .then(onSuccess)
     },
 
     getOrganizations: async (query, onSuccess=null, onFail=null)=>{
       
         //query keys:
         // name: string
-        // sort_by: name, mentors, opp, or null
-
+        // optional location
+        // sort_by: name, mentors, opp, comp, or null
         // avg, max, min ,... stats in details
+        let data = {}
 
+        if(query.name) data.search = query.name
+        if(query.location) data.location = query.location
+        if(query.sort_by) data.sort_by = query.sort_by
 
-        onSuccess?.([
+        
+
+        axios.get(
+            API_BASE+"organizations",
             {
-                "id": "4",
-                "name": "American University of Beirut",
-                "location":"Beirut",
-                "n_mentors": 100,
-                "n_opportunities": 10
-            },
-
-            {
-                "id": "5",
-                "name": "Microsoft",
-                "location":"US",
-                "n_mentors": 100,
-                "n_opportunities": 10
-            },
-
-            {
-                "id": "6",
-                "name": "Google",
-                "location":"US",
-                "n_mentors": 100,
-                "n_opportunities": 10
-            },
-        ]);
+              params: data
+            }
+        )
+        .then(res=>{
+            console.log(res)
+            onSuccess?.(res.data)
+        })
     },
 
     getOrganization: async (id, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            {
-                "id": 1,
-                "name": "American University of Beirut",
-                "email": "info@aub.edu.lb",
-                "website":"https://aub.edu.lb",
-                "location":"Beirut, Lebanon",
-                "is_educational": true,
-                "n_mentors": 20,
-                "n_opportunities": 100,
-                "max_compensation": 1000,
-                "min_compensation": 300,
-                "avg_compensation": 500,
-            }
-            )
+        axios.get(
+            API_BASE+"organizations/"+id
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     addOrganization: async (org, onSuccess=null, onFail=null)=>{
@@ -400,8 +530,14 @@ export default {
             is_educational: (org.educational== "true")
         }
 
-        console.log(data);
-        onSuccess?.();
+        axios.post(
+            API_BASE+"organizations/"+org.email,
+            data
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
     editOrganization: async (id, org, onSuccess=null, onFail=null)=>{
@@ -416,19 +552,23 @@ export default {
             is_educational: (org.educational== "true")
         }
 
-        console.log(data);
-        //onSuccess?.();
+        axios.patch(
+            API_BASE+"organizations/"+id,
+            data
+        )
+        .catch(onFail)
+        .then(res=>{
+            onSuccess?.(res.data)
+        }) 
     },
 
-    deleteField: async (id, onSuccess=null, onFail=null)=>{
+    deleteOrganization: async (id, onSuccess=null, onFail=null)=>{
 
 
-        const data = {
-            "id": id,
-        }
-
-        console.log(data);
-        onSuccess?.();
+        axios.delete(
+            API_BASE+"organizations/"+id
+        )
+        .then(onSuccess)
     },
     
 
@@ -545,7 +685,7 @@ export default {
 
     },
 
-    getOpportunities: async (uid, query, onSuccess=null, onFail=null)=>{
+    getOpportunities: async (query, onSuccess=null, onFail=null)=>{
 
         //query keys
         // uid: id of user
@@ -595,7 +735,7 @@ export default {
             'opp_id': oppid
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -606,7 +746,7 @@ export default {
             'opp_id': oppid
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -616,7 +756,7 @@ export default {
             'opp_id': oppid
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -641,7 +781,7 @@ export default {
             ]
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -667,7 +807,7 @@ export default {
             ]
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -742,7 +882,7 @@ export default {
             "content": benefit
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -754,7 +894,7 @@ export default {
             "content": benefit
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -765,7 +905,7 @@ export default {
             "id": benefit_id,
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -776,7 +916,7 @@ export default {
             "opp_id": oppid,
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -787,7 +927,7 @@ export default {
             "opp_id": oppid,
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -799,7 +939,7 @@ export default {
             "opp_id": opp_id,
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -812,7 +952,7 @@ export default {
             "status": "ongoing"
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -826,7 +966,7 @@ export default {
             "rating": rating
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -841,7 +981,7 @@ export default {
             "message": message,
         }
 
-        console.log(data)
+         
         onSuccess?.()
     },
 
@@ -852,7 +992,7 @@ export default {
             "receiver_id": receiver_id,
         }
 
-        console.log(data)
+         
         onSuccess?.([
             {
                 type: "received",

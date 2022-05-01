@@ -23,7 +23,7 @@ export function ListContent(props) {
 
     function deleteRecord(i) {
         let d = [...data];
-        console.log(i);
+         
         d.splice(i, 1);
         setData(d);
     }

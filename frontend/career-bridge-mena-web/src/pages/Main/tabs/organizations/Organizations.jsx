@@ -22,7 +22,7 @@ export default function Organizations(props){
     
 
     function search(){
-        console.log(query)
+         
         api.getOrganizations(query, setData);
     }
 
@@ -67,7 +67,7 @@ export default function Organizations(props){
             sort_fields = {
                 [
                     {label: "name", value: "name"},
-                    {label: "seekers", value: "seekers"},
+                    {label: "mentors", value: "mentors"},
                     {label: "opportunities", value: "opp"},
                 ]
             }
@@ -107,7 +107,7 @@ function OrganizationListItem(props){
             <label>Opportunities</label>
             </div>
             <div className="card-count">
-            <p>{props.data.n_opportunities}</p>
+            <p>{props.data.n_mentors}</p>
             <label>Mentors</label>
             </div>
         </div>
