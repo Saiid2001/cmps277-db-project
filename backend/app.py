@@ -1022,7 +1022,7 @@ def organizationNames():
 def getPostedOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.email as org_id, org.name, org.location, a.email, u.name, u.email, count(distinct ao.email) as n_mentors, count(distinct st.email) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.email and o.posting_alum_email = a.email and u.email = a.email and ao.opp_id = o.email and st.opp_id = o.email and a.email = '{email}'""")
+            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.name, org.location, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and a.uemail = '{email}'""")
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1034,7 +1034,7 @@ def getPostedOpportunities(email):
 def getAssociateOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.email, o.name, org.email as org_id, org.name, org.location, a.email, u.name, u.email, count(distinct ao.email) as n_mentors, count(distinct st.email) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.email and o.posting_alum_email = a.email and u.email = a.email and ao.opp_id = o.email and st.opp_id = o.email and ao.email = '{email}'""")         
+            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.oname, org.olocation, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and ao.alemail = '{email}'""")         
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1046,7 +1046,7 @@ def getAssociateOpportunities(email):
 def getMatchedSeekerOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.email, o.name, org.email as org_id, org.name, org.location, a.email, as.stud_email as seeker_email, us.name, u.name, u.email from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.org_id = org.email and o.posting_alum_email = a.email and u.email = a.email and ao.opp_id = o.email and st.opp_id = o.email and as.alum_email = ao.email and as.stud_email= us.email and u.email = '{email}'""")           
+            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.oname, org.olocation, a.uemail, as.mentee_email as seeker_email, us.fname, us.lname, u.fname, u.lname, u.uemail from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.hosting_email = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and as.mentor_email = ao.alemail and as.mentee_email= us.uemail and u.uemail = '{email}'""")           
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1059,7 +1059,7 @@ def getMatchedSeekerOpportunities(email):
 def getAppliedOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.email, o.name, org.email as org_id, org.name, org.location, a.email, u.name, u.email, count(distinct ao.email) as n_mentors, count(distinct st.email) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.email and o.posting_alum_email = a.email and u.email = a.email and ao.opp_id = o.email and st.opp_id = o.email and st.email = '{email}'""")          
+            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as hosting_email, org.oname, org.olocation, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.hosting_email = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and st.semail = '{email}'""")          
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1071,7 +1071,7 @@ def getAppliedOpportunities(email):
 def getMatchedMentorOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.email, o.name, org.email as org_email, org.name, org.location, a.email, as.alum_email as mentor_email, us.name as mentor_name, u.name, u.email from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.org_email = org.email and o.posting_alum_email = a.email and ao.opp_id = o.email and st.opp_id = o.email and as.stud_email = st.email and as.stud_email= u.email and u.email = '{email}'""")            
+            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_email, org.oname, org.olocation, a.uemail, as.mentor_email as mentor_email, us.uname as mentor_name, u.uname, u.uemail from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.hosting_email = org.oemail and o.alemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and as.mentee_email = st.semail and as.mentee_email= u.uemail and u.uemail = '{email}'""")            
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1087,7 +1087,7 @@ def applyToOpportunity():
             content = request.get_json()
             uid = get(content,"uid")
             opp_id = get(content,"oppid")
-            insert_user_cmd = f"""INSERT INTO stud_apply_oppr(email, opp_id) 
+            insert_user_cmd = f"""INSERT INTO stud_apply_oppr(semail, opp_id) 
                                 VALUES({uid}, {opp_id})"""
             cursor.execute(insert_user_cmd)
             mysql.connection.commit()
@@ -1106,7 +1106,7 @@ def applyToOpportunity():
 def cancelApplytoOpportunity(email, opp_id):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""delete from stud_apply_oppr where email = '{email}' and opp_id = '{opp_id}'""")
+            cursor.execute(f"""delete from stud_apply_oppr where semail = '{email}' and opp_id = '{opp_id}'""")
             mysql.connection.commit()
             response = jsonify('User deleted successfully.')
             response.status_code = 200
@@ -1125,15 +1125,15 @@ def getOpportunityRelation(email,opp_id):
             content = request.get_json()
             rel = get(content, "rel")
             if rel == "associated":
-                cursor.execute(f"""select ao.email, o.email from alum_associate_opp ao, opportunity o where ao.opp_id = o.email""")
+                cursor.execute(f"""select ao.alemail, o.email from alum_associate_opp ao, opportunity o where ao.opp_id = o.email""")
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
             elif rel == "matchedMentor":
-                cursor.execute(f"""select as.alum_email, o.email from alum_associate_opp ao, alum_mentor_stud as , opportunity o where ao.opp_id = o.email and ao.email = as.alum_email and as.alum_email = '{email}'""")
+                cursor.execute(f"""select as.mentor_email, o.email from alum_associate_opp ao, alum_mentor_stud as , opportunity o where ao.opp_id = o.email and ao.alemail = as.mentor_email and as.mentor_email = '{email}'""")
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
             elif rel =="matchedSeeker":
-                cursor.execute(f"""select o.email from stud_apply_oppr st , opportunity o where st.opp_id = o.email and st.email = '{email}'""")
+                cursor.execute(f"""select o.email from stud_apply_oppr st , opportunity o where st.opp_id = o.email and st.semail = '{email}'""")
                 rv = cursor.fetchall(), 200
                 return jsonify(rv)
     except Exception as e:
@@ -1142,10 +1142,10 @@ def getOpportunityRelation(email,opp_id):
             cursor.close()
 
 @app.route("/display/oppBenefits/<string:email>")
-def getOpportunityBenefits(email):
+def getOpportunityBenefits(opp_id):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.email, b.content from opportunity o, opp_comp_benefits b where o.opp_id = '{email}'""")           
+            cursor.execute(f"""select opp_id, benefit from opp_comp_benefits where opp_id = '{opp_id}'""")           
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1159,7 +1159,7 @@ def addOpportunityBenefits(opp_id):
             cursor = mysql.connection.cursor()
             content = request.get_json()
             benefit = get(content, "benefit")
-            insert_user_cmd = f"""INSERT INTO opp_comp_benefits(org_email, content) 
+            insert_user_cmd = f"""INSERT INTO opp_comp_benefits(opp_id, benefit) 
                                 VALUES('{opp_id}', '{benefit}')"""
             cursor.execute(insert_user_cmd)
             mysql.connection.commit()
@@ -1173,16 +1173,15 @@ def addOpportunityBenefits(opp_id):
             cursor.close()
             return(response)
 
-@app.route("/edit/opportunity/<int:opp_id>/Benefit/benefit_id", methods=['GET','POST'])
-def editOpportunityBenefits(opp_id, benefit_id):
+@app.route("/edit/benefit/<int:opp_id>", methods=['GET','POST'])
+def editOpportunityBenefits(opp_id):
     try:
             cursor = mysql.connect.cursor()
             content = request.get_json()
             benefit = get(content, "benefit")
-            content= content['benefit']
             update_user_cmd = f"""update opp_comp_benefits
-                                 set content='{benefit}'
-                                 where id='{benefit_id}' and oppid= '{opp_id}'"""
+                                 set benefit='{benefit}'
+                                 where opp_id= '{opp_id}'"""
             cursor.execute(update_user_cmd)
             mysql.connect.commit()
             response = jsonify('User updated successfully.')
@@ -1195,11 +1194,11 @@ def editOpportunityBenefits(opp_id, benefit_id):
             cursor.close()
             return(response)
 
-@app.route("/delete/opportunity/<int:opp_id>/Benefit/benefit_id")
-def deleteOpportunityBenefit(opp_id,benefit_id):
+@app.route("/delete/opportunity/<int:opp_id>")
+def deleteOpportunityBenefit(opp_id,benefit):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""delete from opp_comp_benefits where id = '{benefit_id}' and oppid = '{opp_id}'""")
+            cursor.execute(f"""delete from opp_comp_benefits where opp_id = '{opp_id}' and benefit = '{benefit}'""")
             mysql.connection.commit()
             response = jsonify('User deleted successfully.')
             response.status_code = 200
@@ -1215,7 +1214,7 @@ def deleteOpportunityBenefit(opp_id,benefit_id):
 def associateOpportunity(email,opp_id):
     try:
             cursor = mysql.connect.cursor()
-            cursor.execute(f"""select email, opp_id from alum_associate_opp where email = '{email}' and opp_id = '{opp_id}'""")            
+            cursor.execute(f"""select alemail, opp_id from alum_associate_opp where alemail = '{email}' and opp_id = '{opp_id}'""")            
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1227,15 +1226,15 @@ def associateOpportunity(email,opp_id):
 def matchMentoring(mentor_email, seeker_email, opp_id):
     try:
             cursor = mysql.connection.cursor()
-            insert_user_cmd = f"""INSERT INTO alum_associate_opp(email, opp_id) 
-                                VALUES('{seeker_email}', '{opp_id}') and insert into stud_apply_oppr(email, opp_id) 
+            insert_user_cmd = f"""INSERT INTO alum_associate_opp(alemail, opp_id) 
+                                VALUES('{seeker_email}', '{opp_id}') and insert into stud_apply_oppr(semail, opp_id) 
                                 VALUES('{mentor_email}','{opp_id}')"""
             cursor.execute(insert_user_cmd)
             mysql.connection.commit()
             response = jsonify(message='User added successfully.', id=cursor.lastrowid)
             update_user_cmd = f"""update alum_mentor_stud
                                  set status="ongoing"
-                                 where alum_email = '{mentor_email}' and stud_email ='{seeker_email}'"""
+                                 where mentor_email = '{mentor_email}' and mentee_email ='{seeker_email}'"""
             cursor.execute(update_user_cmd)
             mysql.connection.commit()
             response.status_code = 200
@@ -1254,11 +1253,11 @@ def finishMentoring(opp_id, mentor_email, seeker_email):
             cursor = conn.cursor()
             content = request.get_json()
             rating = get(content, "rating")
-            delete_user_cmd = f"""delete from stud_apply_oppr s where s.email = '{seeker_email}' and s.opp_id = '{opp_id}'"""
+            delete_user_cmd = f"""delete from stud_apply_oppr s where s.semail = '{seeker_email}' and s.opp_id = '{opp_id}'"""
             cursor.execute(delete_user_cmd)
             update_user_cmd = f"""update alum_mentor_stud
                                  set rating='{rating}', status="done"
-                                 where alum_email='{mentor_email}' and stud_email='{seeker_email}'"""
+                                 where mentor_email='{mentor_email}' and mentee_email='{seeker_email}'"""
             cursor.execute(update_user_cmd)
             conn.commit()
             response = jsonify('Updated successfully.')
@@ -1279,7 +1278,7 @@ def sendMessage(email):
             content = request.get_json()
             other_id = get(content,"other_id")
             message = get(content,"message")
-            insert_user_cmd = f"""INSERT INTO user_messages(sender_id, receiver_id, content) 
+            insert_user_cmd = f"""INSERT INTO message(sender_email, receiver_email, content) 
                                 VALUES('{email}', '{other_id}', '{message}')"""
             cursor.execute(insert_user_cmd)
             mysql.connect.commit()
@@ -1297,21 +1296,20 @@ def sendMessage(email):
 def getMessages(email, other_id):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select message from user_messages where sender_email = '{email}' and receiver_email = '{other_id}'""")
+            cursor.execute(f"""select content from message where sender_email = '{email}' and receiver_email = '{other_id}'""")
             rv = cursor.fetchall()
             return jsonify(rv)
     except Exception as e:
             print(e)
     finally:  
             cursor.close()
-            conn.close()
 
 
 @app.route("/display/users")
 def getUsers():
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select name, email from user""")
+            cursor.execute(f"""select full_name, uemail from user""")
             rv = cursor.fetchall()
             return jsonify(rv),200
     except Exception as e:
@@ -1323,7 +1321,7 @@ def getUsers():
 def getMentors():
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select u.name, a.alum_email from alum_mentor_stud a, user u where a.alum_email=u.email""")
+            cursor.execute(f"""select u.uname, a.mentor_email from alum_mentor_stud a, user u where a.mentor_email=u.uemail""")
             rv = cursor.fetchall()
             return jsonify(rv)
     except Exception as e:
@@ -1336,7 +1334,7 @@ def getMentors():
 def getSeekers(opp_id):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.opp_id, a.email from stud_apply_oppr s, opportunity o, alum_associate_opp a where a.opp_id = o.opp_id and s.opp_id = o.opp_id and o.opp_id='{opp_id}'""")
+            cursor.execute(f"""select o.id, a.alemail from stud_apply_oppr s, opportunity o, alum_associate_opp a where a.opp_id = o.id and s.opp_id = o.id and o.id='{opp_id}'""")
             rv = cursor.fetchall()
             return jsonify(rv), 200
     except Exception as e:
@@ -1352,11 +1350,11 @@ def getMentoringmentors(email):
             content = request.get_json()
             opp_id = get(content, "opp_id")
             if opp_id == NULL: 
-                cursor.execute(f"""select a.alum_email, u.name from alum_mentor_stud a, user u where a.alum_email = u.email and a.stud_email = '{email}'""")
+                cursor.execute(f"""select a.mentor_email, u.uname from alum_mentor_stud a, user u where a.mentor_email = u.uemail and a.mentee_email = '{email}'""")
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
             else:
-                cursor.execute(f"""select a.email, u.name from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.opp_id and s.opp_id = o.opp_id and u.email = a.email and s.email='{email}' and opp_id='{opp_id}'""")            
+                cursor.execute(f"""select a.alemail, u.uname from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.id and s.opp_id = o.id and u.uemail = a.alemail and s.semail='{email}' and o.id='{opp_id}'""")            
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
     except Exception as e:
@@ -1374,11 +1372,11 @@ def getMentoredSeekers(email):
             content = request.get_json()
             opp_id = get(content,"opp_id")
             if opp_id == pymysql.NULL: 
-                cursor.execute(f"""select a.stud_email, u.name from alum_mentor_stud a, user u where a.stud_email = u.email and a.alum_email = '{email}'""")
+                cursor.execute(f"""select a.mentee_email, u.uname from alum_mentor_stud a, user u where a.mentee_email = u.uemail and a.mentor_email = '{email}'""")
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
             else:
-                cursor.execute(f"""select s.email, u.name from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.opp_id and s.opp_id = o.opp_id and u.email = s.email and a.email='{email}' and opp_id='{opp_id}'""")                
+                cursor.execute(f"""select s.semail, u.uname from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.id and s.opp_id = o.id and u.uemail = s.semail and a.alemail='{email}' and o.id='{opp_id}'""")                
                 rv = cursor.fetchall()
                 return jsonify(rv), 200
     except Exception as e:
