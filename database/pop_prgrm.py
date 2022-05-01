@@ -57,8 +57,8 @@ def pop_prgrm(mydb):
 
 	count = 0
 	for em in emails:
-		cmp = randint(0,100)
-		if cmp % 3 != 0:
+		
+		for i  in range(randint(0,3)):
 			email = em[0]
 			org = choice(Orgs)[0]
 			is_complete = randint(0,1)

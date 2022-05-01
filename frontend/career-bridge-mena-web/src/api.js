@@ -26,6 +26,8 @@ export default {
     setUser: async (uid, info, onSuccess = null, onFail = null)=>{
         info.uid=uid
         console.log(info)
+            
+        // first_name, last_name, birth_date, linkedin, website, phone, gender
     },
 
     getCurrentPosition: async(uid, onSuccess = null, onFail = null)=>{
@@ -43,6 +45,8 @@ export default {
 
     setCurrentPosition: async(uid, info, onSuccess = null, onFail = null)=>{
         console.log(info)
+        
+        //position org_id
     },
 
     getAllOrganizationNames: async( onSuccess = null, onFail = null)=>{
@@ -68,6 +72,8 @@ export default {
     setSeekerData: async (uid, info, onSuccess=null, onFail=null)=>{
 
         console.log(info)
+        
+        // sop, open_to_work
 
     },
 
@@ -104,6 +110,8 @@ export default {
 
     deleteEducation: async (uid, program, onSuccess=null, onFail=null)=>{
         console.log(program)
+        
+        //program id
     },
 
     setEducation: async (uid, program, onSuccess=null, onFail=null)=>{

@@ -1,3 +1,5 @@
 **\node_modules
 database/config.env
 database/.env
+backend/cmps277(1)/.env
+backend/.env

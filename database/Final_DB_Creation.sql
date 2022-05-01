@@ -14,6 +14,9 @@ Create Table Organization(
     is_workplace boolean
 );
 
+CREATE VIEW Organization_Name As
+    SELECT oemail, oname from Organization;
+
 Create unique index org_name on Organization (oname);
 
 Create Table User(
@@ -38,7 +41,7 @@ Create Table Student(
 
 Create Table alumnus(
     uemail Varchar(200) NOT NULL,
-    score int,
+    score int default 0,
     position Varchar(50),
     work_email Varchar(200) Not Null,
     Foreign key (uemail) references User(email) On delete cascade,
