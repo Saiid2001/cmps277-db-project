@@ -2,7 +2,9 @@ import axios from 'axios';
 
 import { ReactSession } from 'react-client-session';
 
-const API_BASE = "http://127.0.0.1:5000/";
+import config from "./config.json";
+
+const API_BASE = config.API_BASE;
 
 export default {
 
