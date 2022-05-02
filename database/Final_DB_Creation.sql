@@ -102,7 +102,7 @@ Create index student_email on Certifications (semail);
 Create Table Opportunity(
 		id int auto_increment primary key,
 		hosting_email Varchar(200) Not NULL,
-        name Varchar(200) unique,
+        name Varchar(200) ,
 		location Varchar(100),
         start_time Date,
         end_time Date,
@@ -214,3 +214,19 @@ Create Table Associate(
     Foreign Key (opp_id) References opportunity(id),
     Primary Key(alemail, opp_id)
 );
+
+create view summary_opportunity as 
+select 
+o.id as id, o.name as name,
+o.hosting_email as org_id,
+org.oname as org_name, 
+org.olocation as location, u.email as poster_email, 
+concat(u.fname," ",u.lname) as poster_name,
+count(distinct ao.alemail) as n_mentors, 
+count(distinct ap.semail) as n_seekers 
+from opportunity o
+join organization org on o.hosting_email = org.oemail
+join associate ao on ao.opp_id = o.id
+join user u on u.email = o.alemail
+join apply ap on ap.opp_id = o.id
+group by o.id;

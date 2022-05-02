@@ -14,10 +14,11 @@ import { type } from "@testing-library/user-event/dist/type";
 export default function Profile(props){
 
     const userType = useContext(TypeContext);
+    console.log(props.other)
     
     return <div id="profile-tab" className="tab">
 
-        <Card title="Profile">
+        <Card title="Profile" editButton={!props.other}>
                 
                 <ProfileInfoContent/>
                 {userType==api.USER_TYPES.Mentor? <MentorPositionContent/>:<SeekerInfoContent/>}
@@ -30,6 +31,7 @@ export default function Profile(props){
                 api_request={api.getEducations}
                 new_record= {{"type":"new", "accomplishments":[]}}
                 RecordType= {EducationRecord}
+                noEdit = {props.other}
                 />
                 <div></div>
             </Card>
@@ -40,6 +42,7 @@ export default function Profile(props){
                 api_request={api.getExperiences}
                 new_record= {{"type":"new", "accomplishments":[]}}
                 RecordType= {ExperienceRecord}
+                noEdit = {props.other}
                 />
                 <div></div>
             </Card>:null}
@@ -50,6 +53,7 @@ export default function Profile(props){
                 api_request={api.getProjects}
                 new_record= {{"type":"new"}}
                 RecordType= {ProjectRecord}
+                noEdit = {props.other}
                 />
                 <div></div>
             </Card>:null}
@@ -60,11 +64,12 @@ export default function Profile(props){
                 api_request={api.getCertifications}
                 new_record= {{"type":"new"}}
                 RecordType= {CertificationRecord}
+                noEdit = {props.other}
                 />
                 <div></div>
             </Card>:null}
 
-            {userType==api.USER_TYPES.Seeker?<Card title="Skills" editButton={true}>
+            {userType==api.USER_TYPES.Seeker?<Card title="Skills" editButton={!props.other}>
                 <SkillsContent></SkillsContent>
                 <div></div>
             </Card>:null}
@@ -349,12 +354,12 @@ export function EducationRecord(props) {
             </ul>
             <button type="submit" className="submit" hidden />
         </form>
-        <div className="buttons">
+        {props.noEdit?null:<div className="buttons">
             {!props.no_edit && !isEditing ? <button onClick={editChildren}>Edit</button> : null}
             {!props.no_edit && isEditing ? <button onClick={saveChildren}>Save</button> : null}
             {!props.no_edit && isEditing ? <button onClick={cancelChildren}>Cancel</button> : null}
             {!props.no_edit && isEditing ? <button onClick={deleteChildren}>Delete</button> : null}
-        </div>
+        </div>}
     </div>;
 }
 export function ExperienceRecord(props) {
@@ -451,12 +456,12 @@ export function ExperienceRecord(props) {
             <InlineListItems className={"accomplishments-list"} items={props.data.accomplishments} edit={isEditing} />
             <button type="submit" className="submit" hidden />
         </form>
-        <div className="buttons">
+        {props.noEdit?null:<div className="buttons">
             {!props.no_edit && !isEditing ? <button onClick={editChildren}>Edit</button> : null}
             {!props.no_edit && isEditing ? <button onClick={saveChildren}>Save</button> : null}
             {!props.no_edit && isEditing ? <button onClick={cancelChildren}>Cancel</button> : null}
             {!props.no_edit && isEditing ? <button onClick={deleteChildren}>Delete</button> : null}
-        </div>
+        </div>}
     </div>;
 }
 export function ProjectRecord(props) {
@@ -509,12 +514,12 @@ export function ProjectRecord(props) {
             <textarea type={"text"} name={"description"} className={"major"} placeholder={"Project Description"} required {...!isEditing ? { "disabled": true } : ""} defaultValue={props.data.description}></textarea>
             <button type="submit" className="submit" hidden />
         </form>
-        <div className="buttons">
+        {props.noEdit?null:<div className="buttons">
             {!props.no_edit && !isEditing ? <button onClick={editChildren}>Edit</button> : null}
             {!props.no_edit && isEditing ? <button onClick={saveChildren}>Save</button> : null}
             {!props.no_edit && isEditing ? <button onClick={cancelChildren}>Cancel</button> : null}
             {!props.no_edit && isEditing ? <button onClick={deleteChildren}>Delete</button> : null}
-        </div>
+        </div>}
     </div>;
 }
 export function CertificationRecord(props) {
@@ -569,12 +574,12 @@ export function CertificationRecord(props) {
             )}
             <button type="submit" className="submit" hidden />
         </form>
-        <div className="buttons">
+        {props.noEdit?null:<div className="buttons">
             {!props.no_edit && !isEditing ? <button onClick={editChildren}>Edit</button> : null}
             {!props.no_edit && isEditing ? <button onClick={saveChildren}>Save</button> : null}
             {!props.no_edit && isEditing ? <button onClick={cancelChildren}>Cancel</button> : null}
             {!props.no_edit && isEditing ? <button onClick={deleteChildren}>Delete</button> : null}
-        </div>
+        </div>}
     </div>;
 }
 export function SkillsContent(props) {

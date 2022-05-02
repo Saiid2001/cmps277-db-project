@@ -64,11 +64,11 @@ export default function Main(props){
 
     switch (props.tab) {
         case "profile":
-            tab = <Profile></Profile>;
+            tab = <Profile ></Profile>;
             break;
 
         case "profile-other":
-            tab = <Profile></Profile>;
+            tab = <Profile other={true}></Profile>;
             break;
     
         case "users":
@@ -172,23 +172,65 @@ export default function Main(props){
 
 }
 
+
+
 function MessageView(props){
 
     const [open, setOpen] = useState(false);
+    const [loaded, setLoaded] = useState(false);
+    const [refresh ,setRefresh] = useState(true); 
+    const [messages, setMessages] = useState([]);
+    const [other, setOther] = useState(null);
+    const userContext = useContext(UserContext)
 
+    console.log(messages)
 
+    useEffect(()=>{
+        if(!loaded){
 
+            window.addEventListener('open-messages', 
+            (e)=>{
+               
+                let other_id = e.detail.other
+                setOther(other_id)
+                api.getMessage(userContext, other_id, setMessages)
+                setOpen(true)
+            })
+            setLoaded(true)
+        }
+
+        if(refresh){
+            console.log('h')
+            api.getMessage(userContext, other, setMessages)
+            setRefresh(false)
+        }
+    },[loaded,refresh])
+
+    
+
+    function handleSubmit(e){
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        let formProps = Object.fromEntries(formData);
+        api.sendMessage(userContext, other, formProps.message, ()=>{
+            setRefresh(true)
+            e.target.reset()
+        })
+    }
+    
     return <div id = "message-view">
-        <h1 onClick={()=>setOpen(!open)}>Messages</h1>
+        <h1 onClick={()=>setOpen(false)}>Messages</h1>
 
         {open?
         <div className="main">
-            <Select></Select>
+            <h3>{other}</h3>
             <div className="messages-container">
-                <p className="sent" data-time="2020-03-04 12:00"><b>Hello</b></p>
-                <p className="received" data-time="2020-03-04 12:00"><b>By</b></p>
+
+                {messages.map(x =>{
+                    return x.type=="sent"?<p className="sent" data-time={x.timestamp}><b>{x.message}</b></p>:<p className="received" data-time={x.timestamp}><b>{x.message}</b></p>
+            })}
             </div>
-            <form>
+            <form onSubmit={handleSubmit}>
                 <input type="text" name="message"></input>
                 <button type="submit">Send</button>
             </form>

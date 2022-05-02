@@ -45,11 +45,11 @@ export default function DetailsOpportunity(props){
     }
 
     function _cancel(){
-        api.cancelApplyToOpportunity(useContext, data.id, ()=>window.location.reload())
+        api.cancelApplyToOpportunity(userContext, data.id, ()=>window.location.reload())
     }
 
     function _dessociate(){
-        api.dessociateOpportunity(useContext, data.id, ()=>window.location.reload())
+        api.dessociateOpportunity(userContext, data.id, ()=>window.location.reload())
     
     }
 
@@ -64,7 +64,7 @@ export default function DetailsOpportunity(props){
             mentor = data.mentor_id;
             seeker = userContext;
         }
-        api.unmatchMentoring(mentor, seeker, data.id, ()=>window.location.reload())
+        api.unmatchMentoring(mentor, seeker, props.id, ()=>window.location.reload())
     
     }
 
@@ -75,12 +75,12 @@ export default function DetailsOpportunity(props){
     }
 
     function _apply(){
-        api.applyToOpportunity(useContext,data.id, ()=>window.location.reload())
+        api.applyToOpportunity(userContext,data.id, ()=>window.location.reload())
    
     }
 
     function _associate(){
-        api.associateOpportunity(useContext, data.id, ()=>window.location.reload())
+        api.associateOpportunity(userContext, data.id, ()=>window.location.reload())
 
     }
 
@@ -161,15 +161,15 @@ export default function DetailsOpportunity(props){
             </div>
             <div className="card-count">
             <label>Application Portal</label>
-            <p><button onClick={()=>window.location= data.portal}>Click here to go to portal</button></p>
+            <p><button onClick={()=>window.location= data.application_portal_url}>Click here to go to portal</button></p>
             </div>
         </div>
 
         <div className="stats">
             <div className="card-count">
-            <label>Additional Benifits</label>
+            <label>Additional benefits</label>
             <ul>
-                {data.benifits?data.benifits.map(x=><li>{x}</li>):null}
+                {data.benefits?data.benefits.map(x=><li>{x}</li>):null}
             </ul>
             </div>
         </div>
@@ -179,14 +179,14 @@ export default function DetailsOpportunity(props){
 
     {userType == api.USER_TYPES.Mentor?
     <Card title={"Applicants"} editButton={false}>
-        <MentoringStudents></MentoringStudents>
-        <AllStudents></AllStudents>
+        <MentoringStudents id={props.id}></MentoringStudents>
+        <AllStudents id={props.id}></AllStudents>
     </Card>:null}
 
     {userType == api.USER_TYPES.Seeker?
     <Card title={"Mentors"} editButton={false}>
-        <MentoringMentors></MentoringMentors>
-        <AllMentors></AllMentors>
+        <MentoringMentors id={props.id}></MentoringMentors>
+        <AllMentors id={props.id}></AllMentors>
     </Card>:null}
 
 
@@ -208,8 +208,13 @@ function RatingPopup(props){
     }, [data])
 
     function _finish(rating){
-
-        api.finishMentoring(props.data.m_id, props.data.s_id, props.data.oppid , rating, ()=>window.location.reload())
+        
+        api.finishMentoring(
+            props.data.m_id, 
+            props.data.s_id, 
+            props.data.oppid , 
+            rating, ()=>window.location.reload()
+        )
     }
 
     return <section id="rating-popup">
@@ -326,7 +331,7 @@ function MentoringMentors(props){
 
     useEffect(()=>{
         if(!(data)){
-            api.getMentoringMentors(props.id, {pending: true},  setData);
+            api.getMentoringMentors(userContext, props.id,  setData);
         }
     }, [data])
 

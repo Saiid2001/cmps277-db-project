@@ -36,9 +36,9 @@ export function ListContent(props) {
 
     return <section className={props.className}>
         <div>
-            {data.map((x, i) => <props.RecordType key={i} id={i} data={x} isNew={x.type == "new"} onDelete={() => deleteRecord(i)}></props.RecordType>)}
+            {data.map((x, i) => <props.RecordType key={i} id={i} data={x} isNew={x.type == "new"} onDelete={() => deleteRecord(i)} noEdit={props.noEdit}></props.RecordType>)}
 
-            <button className="button" onClick={addRecord}>Add</button>
+            {props.noEdit==true?null:<button className="button" onClick={addRecord}>Add</button>}
         </div>
 
     </section>;

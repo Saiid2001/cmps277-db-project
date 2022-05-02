@@ -19,9 +19,11 @@ export default function NewOpportunity(props){
 
         if(allFields.length==0){
         api.getFields({}, setAllFields)
-        api.getAllOrganizationNames(setAllOrgs)
+        api.getAllOrganizationNames((x=>setAllOrgs(JSON.parse(x))))
         }
     }, [data])
+
+    console.log(data)
 
     function handleSubmit(e){
         e.preventDefault();
@@ -29,18 +31,15 @@ export default function NewOpportunity(props){
         const formData = new FormData(e.target);
         const formProps = Object.fromEntries(formData);
         
-        let benifits = [];
-        document.querySelectorAll(` .benifits-list li textarea`).forEach(x => {
-            benifits.push(x.value);
+        let benefits = [];
+        document.querySelectorAll(` .benefits-list li textarea`).forEach(x => {
+            benefits.push(x.value);
         });
-
-        formProps.benifits = benifits;
+        formProps.benefits = benefits;
         formProps.field_id = selectedField;
         formProps.org_id = selectedOrg;
         
-         
         props.edit?api.editOpportunity(props.id, formProps, ()=>{window.location="/opportunities"}):api.addOpportunity(contextUser, formProps, ()=>{window.location="/opportunities"});
-    
     
     }
 
@@ -66,7 +65,7 @@ export default function NewOpportunity(props){
     }
 
 
-     
+     console.log(data)
     return (
         <form id="new-field" className="add-entity-form" onSubmit={handleSubmit}>
             {props.edit?<h1>Edit Opportunity</h1>:<h1>New Opportunity</h1>}
@@ -92,7 +91,7 @@ export default function NewOpportunity(props){
             <label>Location</label>
             <input type="text" name='location' required placeholder="Opportunity Location"  defaultValue={data.location}></input>
             <label>Application portal</label>
-            <input type="url" name='portal' placeholder="Opportunity Portal" required defaultValue={data.portal}></input>
+            <input type="url" name='portal' placeholder="Opportunity Portal" required defaultValue={data.application_portal_url}></input>
             
             <label>Start Date</label>
             <input type="date" name='start_date' required  placeholder="Start Date" defaultValue={data.start_date}></input >
@@ -118,8 +117,8 @@ export default function NewOpportunity(props){
                     Per task
                 </option>
             </select>:null}
-            <label>Additional Benifits</label>
-            <InlineListItems className={"benifits-list"} items={data.benifits?data.benifits: []} edit={true} />
+            <label>Additional benefits</label>
+            <InlineListItems className={"benefits-list"} items={data.benefits?data.benefits: []} edit={true} />
             {props.edit?<button type="submit">Save</button>:<button type="submit">Add Opportunity</button>}
         </form>
     )

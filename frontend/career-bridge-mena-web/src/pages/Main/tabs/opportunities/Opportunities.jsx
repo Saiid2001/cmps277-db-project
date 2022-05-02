@@ -39,7 +39,7 @@ export default function Opportunities(props){
              
             api.getOpportunities(userContext, query, setData)
             api.getFields({}, (data)=>{ data.push({id:-1,name:"No Field Filter"}); setAllFields(data)})
-            api.getAllOrganizationNames((data)=>{ data.push({org_id:-1,org_name:"No Organization Filter"}); setAllOrgs(data)})
+            api.getAllOrganizationNames((data)=>{ let d = JSON.parse(data);  d.push({org_id:-1,org_name:"No Organization Filter"}); setAllOrgs(d)})
             setLoaded(true)
         }
     },[loaded])
@@ -116,10 +116,10 @@ export default function Opportunities(props){
                     options={allFields.map(x=>{return {value: x.id, label:x.name}})}
                     onChange={onFieldsSelectChange}
                     placeholder={"Fields"} />
-            <Select
+            {allOrgs.length?<Select
                     options={allOrgs.map(x=>{return {value: x.org_id, label:x.org_name}})}
                     onChange={onOrgsSelectChange}
-                    placeholder={"Organizations"} />
+                    placeholder={"Organizations"} />:null}
 
         </div>
         <Card title = "Your Opportunities" className={"summary"} editButton={false}>
@@ -309,11 +309,11 @@ function SummaryOpportunityListItem(props){
     }
 
     function _cancel(){
-        api.cancelApplyToOpportunity(useContext, props.data.id, ()=>window.location.reload())
+        api.cancelApplyToOpportunity(userContext, props.data.id, ()=>window.location.reload())
     }
 
     function _dessociate(){
-        api.dessociateOpportunity(useContext, props.data.id, ()=>window.location.reload())
+        api.dessociateOpportunity(userContext, props.data.id, ()=>window.location.reload())
     
     }
 
@@ -400,12 +400,12 @@ export function OpportunityListItem(props){
     const userContext = useContext(UserContext);
 
     function _apply(){
-        api.applyToOpportunity(useContext, props.data.id, ()=>window.location.reload())
+        api.applyToOpportunity(userContext, props.data.id, ()=>window.location.reload())
    
     }
 
     function _associate(){
-        api.associateOpportunity(useContext, props.data.id, ()=>window.location.reload())
+        api.associateOpportunity(userContext, props.data.id, ()=>window.location.reload())
 
     }
 

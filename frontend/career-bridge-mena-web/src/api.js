@@ -166,9 +166,6 @@ export default {
         )
         .then(res=>{
             
-            res.data.push({'org_name':"HARD1", 'org_id':'1'})
-            res.data.push({'org_name':"HARD2", 'org_id':'2'})
-            res.data.push({'org_name':"HARD3", 'org_id':'3'})
             onSuccess?.(JSON.stringify(res.data))
         })
 
@@ -574,118 +571,60 @@ export default {
 
     getPostedOpportunities: async (uid, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "deadline_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Karim Jamil",
-                    "n_seekers": 10,
-                    "n_mentors": 20
-                }
-            ]
+        axios.get(
+            API_BASE+"opportunities/posted/"+uid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
     getAssociatedOpportunities: async (uid, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "deadline_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Karim Bla",
-                    "n_seekers": 10,
-                    "n_mentors": 20
-                }
-            ]
+        axios.get(
+            API_BASE+"opportunities/associated/"+uid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
     getMatchedSeekerOpportunities: async (uid, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "deadline_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Nadim",
-
-                    "seeker_id": "29",
-                    "seeker_name":"George Eid"
-                }
-            ]
+        axios.get(
+            API_BASE+"opportunities/matchedSeeker/"+uid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
     getAppliedOpportunities: async (uid, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "deadline_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Nadim",
-                    "n_seekers": 10,
-                    "n_mentors": 20
-                    
-                }
-            ]
+        axios.get(
+            API_BASE+"opportunities/applied/"+uid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
     getMatchedMentorOpportunities: async (uid, onSuccess=null, onFail = null)=>{
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "end_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Nadim",
-
-                    "mentor_id": "4",
-                    "mentor_name": "Toufic"
-                }
-            ]
+        axios.get(
+            API_BASE+"opportunities/matchedMentor/"+uid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
-    getOpportunities: async (query, onSuccess=null, onFail=null)=>{
+    getOpportunities: async (uid, query, onSuccess=null, onFail=null)=>{
 
         //query keys
         // uid: id of user
@@ -703,40 +642,44 @@ export default {
 
         // return those that the seeker -if user is seeker- did not apply to
 
-        onSuccess?.(
-            [
-                {
-                    "id": 10,
-                    "name": "Software intern",
-                    "org_id": "4",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "end_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Nadim",
-                    "n_seekers": 10,
-                    "n_mentors": 20,
-                    "start_date":"2020-04-21",
-                    "deadline_date": "2021-03-21",
-                    "compensation": 2000,
-                    "compensation_type":"monthly",
-                    "field_name": "Software"
-                }
-            ]
+        let data = {}
+
+        for(var key in query){
+            if(query[key]) data[key] = query[key]
+        }
+
+        if(data.name){
+            data.search = data.name;
+            delete data.name
+        }
+
+        console.log(data)
+        axios.get(
+            API_BASE+"opportunities",
+            {
+                params:data
+            }
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
 
     },
 
     applyToOpportunity: async(uid, oppid, onSuccess=null, onFail=null)=>{
     
+
+        console.log(uid, oppid)
         const data = {
             'uid': uid,
             'opp_id': oppid
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+uid+"/apply/"+oppid
+        )
+        .then(onSuccess)
     },
 
     cancelApplyToOpportunity: async(uid, oppid, onSuccess=null, onFail=null)=>{
@@ -747,7 +690,10 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.delete(
+            API_BASE+"opportunities/"+uid+"/cancel/"+oppid
+        )
+        .then(onSuccess)
     },
 
     deleteOpportunity: async(oppid, onSuccess=null, onFail=null)=>{
@@ -756,8 +702,10 @@ export default {
             'opp_id': oppid
         }
 
-         
-        onSuccess?.()
+        axios.delete(
+            API_BASE+"opportunities/"+oppid
+        )
+        .then(onSuccess)
     },
 
     editOpportunity: async(oppid, opp, onSuccess=null, onFail=null)=>{
@@ -775,20 +723,21 @@ export default {
             "field_id": opp.field_id,
             "application_portal_url": opp.portal,
             "description": opp.description,
-            "benifits":[
-                "h1",
-                "h2"
-            ]
+            "benefits":opp.benefits
         }
 
          
-        onSuccess?.()
+        axios.patch(
+            API_BASE+"opportunities/"+oppid,
+            data
+        )
+        .then(onSuccess)
     },
 
-    addOpportunity: async(uid, oppid, opp, onSuccess=null, onFail=null)=>{
+    addOpportunity: async(uid, opp, onSuccess=null, onFail=null)=>{
     
         const data = {
-            "id": oppid,
+            "id": opp.id,
             "name": opp.name,
             "poster_id": uid,
             "org_id": opp.org_id,
@@ -801,45 +750,25 @@ export default {
             "field_id": opp.field_id,
             "application_portal_url": opp.portal,
             "description": opp.description,
-            "benefits": [
-                "ben1",
-                "ben3",
-            ]
+            "benefits": opp.benefits
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/0",
+            data
+        )
+        .then(onSuccess)
     },
 
     getOpportunity: async(oppid, onSuccess=null, onFail=null)=>{
 
-        onSuccess?.(
-            {
-                    "id": 10,
-                    "name": "Software intern",
-                    "description":"oadinfe iofawnefkio wifb o",
-                    "org_id": "2",
-                    "org_name": "American University of beirut",
-                    "location": "Beirut, Lebanon",
-                    "end_date": "2020-04-21",
-                    "poster_id": "293",
-                    "poster_email": "mentor@bla.com",
-                    "poster_name": "Nadim",
-                    "n_seekers": 10,
-                    "n_mentors": 20,
-                    "start_date":"2020-04-21",
-                    "deadline_date": "2021-03-21",
-                    "compensation": 2000,
-                    "portal": "https://www.google.com",
-                    "compensation_type":"hourly",
-                    "field_id": 1,
-                    "field_name": "Software",
-                    "benifits":[
-                        "h1",
-                        "h2"
-                    ],
-            }
+        axios.get(
+            API_BASE+"opportunities/"+oppid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getOpportunityRelation: async (uid, oppid, onSuccess=null, onFail=null)=>{
@@ -848,12 +777,12 @@ export default {
             'opp_id': oppid
         }
 
-        onSuccess?.(
-            {
-                'rel': "no_rel", //associated, matchedMentor, matchedSeeker, applied, no_rel
-                'uid': 10, // if matchedMentor then the uid is for mentor, if matchedSeeker then uid is for seeker, else null
-            }
+        axios.get(
+            API_BASE+"opportunities/"+uid+"/rel/"+oppid
         )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
 
@@ -863,16 +792,12 @@ export default {
             "opp_id": oppid,
         }
 
-        onSuccess?.([
-            {
-                'id': 1,
-                'content': "snof ienfwenfodn fo"
-            },
-            {
-                'id': 2,
-                'content': "snof ienfwenfodn fo"
-            },
-        ])
+        axios.get(
+            API_BASE+"opportunities/"+oppid+"/benefits"
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     addOpportunityBenefit: async(oppid, benefit, onSuccess=null, onFail=null)=>{
@@ -883,7 +808,13 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+oppid+"/benefits",
+            data
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     editOpportunityBenefit: async(oppid, benefit_id, benefit, onSuccess=null, onFail=null)=>{
@@ -895,7 +826,13 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.patch(
+            API_BASE+"opportunities/"+oppid+"/benefits",
+            data
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     deleteOpportunityBenefit: async(oppid, benefit_id, onSuccess=null, onFail=null)=>{
@@ -906,7 +843,13 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+oppid+"/benefits/delete",
+            data
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     associateOpportunity: async(uid,oppid, onSuccess=null, onFail=null)=>{
@@ -917,7 +860,12 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+uid+"/associate/"+oppid
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     dessociateOpportunity: async(uid,oppid, onSuccess=null, onFail=null)=>{
@@ -928,7 +876,12 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.delete(
+            API_BASE+"opportunities/"+uid+"/associate/"+oppid
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     unmatchMentoring: async(mentor_id, seeker_id, opp_id, onSuccess=null, onFail=null)=>{
@@ -940,7 +893,12 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+opp_id+"/"+mentor_id+"/cancelMentoring/"+seeker_id
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     matchMentoring: async(mentor_id, seeker_id, opp_id, onSuccess=null, onFail=null)=>{
@@ -953,7 +911,12 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+opp_id+"/"+mentor_id+"/mentor/"+seeker_id
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     finishMentoring: async(mentor_id, seeker_id, opp_id, rating, onSuccess=null, onFail=null)=>{
@@ -967,7 +930,13 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"opportunities/"+opp_id+"/"+mentor_id+"/finishMentoring/"+seeker_id,
+            data
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     sendMessage: async(uid, other_id, message, onSuccess=null, onFail=null)=>{
@@ -982,7 +951,13 @@ export default {
         }
 
          
-        onSuccess?.()
+        axios.post(
+            API_BASE+"messages/"+uid+"/message/"+other_id,
+            data
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getMessage: async(sender_id, receiver_id, onSuccess=null, onFail=null)=>{
@@ -993,41 +968,51 @@ export default {
         }
 
          
-        onSuccess?.([
-            {
-                type: "received",
-                message:"Hi ",
-                datetime: "2020-03-10 14:00"
-            },
-            {
-                type: "sent",
-                message:"By ",
-                datetime: "2020-03-10 14:00"
-            }
-        ])
+        axios.get(
+            API_BASE+"messages/"+sender_id+"/message/"+receiver_id,
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getUsers: async(query, onSuccess=null, onFail=null)=>{
     
         // query params
         //  name: search string
+        // type
 
-        onSuccess?.([
+        let data = {}
+
+        for(var key in query){
+            if(query[key]) data[key] = query[key]
+        }
+
+        if(data.name){
+            data.search = data.name;
+            delete data.name
+        }
+
+
+        axios.get(
+            API_BASE+"users",
             {
-                "name": "Saiid El Hajj Chehade",
-                "id": 10
-            },
-        ])
+                params: data
+            }
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getMentors: async(oppid, onSuccess=null, onFail=null)=>{
 
-        onSuccess?.([
-            {
-                "name": "Saiid El Hajj Chehade",
-                "id": 10
-            },
-        ])
+        axios.get(
+            API_BASE+"mentors/"+oppid
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
     
 
@@ -1036,17 +1021,19 @@ export default {
         //query parameters
 
         const data = {
-            "opp_id": 29, // can be null then return all seekers
             "mentor_id": query.mentor_id, // can be null 
             "pending": query.pending, // boolean: if pending true -> get all applicants not mentored by anyone else return every applicant
         }
 
-        onSuccess?.([
+        axios.get(
+            API_BASE+"seekers/"+oppid,
             {
-                "name": "Saiid El Hajj Chehade",
-                "id": 10
-            },
-        ])
+                params: data
+            }
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getMentoringMentors: async(uid, oppid=null, onSuccess=null, onFail=null)=>{
@@ -1056,12 +1043,15 @@ export default {
             opp_id: oppid //can be null then return all mentors of uid
         }
 
-        onSuccess?.([
-            {
-                "name": "Saiid El Hajj Chehade",
-                "id": 10
-            },
-        ])
+        console.log(data)
+
+        axios.get(
+            API_BASE+"mentoringMentors/"+uid,
+            {params: data}
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
     getMentoredSeekers: async(uid, oppid=null, onSuccess=null, onFail=null)=>{
@@ -1071,12 +1061,13 @@ export default {
             opp_id: oppid //can be null then return all mentorees of uid
         }
 
-        onSuccess?.([
-            {
-                "name": "Saiid El Hajj Chehade",
-                "id": 10
-            },
-        ])
+        axios.get(
+            API_BASE+"mentoredSeekers/"+uid,
+            {params: data}
+        )
+        .then(res=>{
+            onSuccess(res.data)
+        })
     },
 
 

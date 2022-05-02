@@ -1,5 +1,4 @@
 
-import base64
 from decouple import config
 from flask import Flask, request, jsonify, session
 from flask_session import Session
@@ -476,7 +475,7 @@ def seeker(email):
         if request.method == 'GET':
 
             if rv:
-                return jsonify(rv), 200
+                return jsonify(prepDict(rv)), 200
             else:
                 return jsonify("Seeker does not exist"), 404
 
@@ -889,8 +888,6 @@ def getOrganizations():
         cursor = mysql.connection.cursor()
         content = request.args
 
-        print(content)
-    
         match_search = [
             "org.oname like '%{}%'",
             "org.olocation like '%{}%'",
@@ -1069,95 +1066,393 @@ def organizationNames():
         return str(e), 500
 
 
-@app.route("/display/postedOpp/<string:email>")
+# TODO: make view
+
+@app.route("/opportunities/posted/<string:email>")
 def getPostedOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.name, org.location, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and a.uemail = '{email}'""")
+            query = f"""
+            select o.* from summary_opportunity o
+            where o.poster_email = '{email}'
+            """
+
+            cursor.execute(query)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return str(e), 500
 
-@app.route("/display/associateOpp/<string:email>")
+
+@app.route("/opportunities/associated/<string:email>")
 def getAssociateOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.oname, org.olocation, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.org_id = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and ao.alemail = '{email}'""")         
+            query = f"""
+            select o.*, ao.alemail from summary_opportunity o
+            join associate ao on ao.opp_id = o.id
+            where ao.alemail = '{email}'
+            """
+
+            cursor.execute(query)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
     finally:  
             cursor.close()
 
-@app.route("/display/matchedSeekerOpp/<string:email>")
+@app.route("/opportunities/matchedSeeker/<string:email>")
 def getMatchedSeekerOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_id, org.oname, org.olocation, a.uemail, as.mentee_email as seeker_email, us.fname, us.lname, u.fname, u.lname, u.uemail from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.hosting_email = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and as.mentor_email = ao.alemail and as.mentee_email= us.uemail and u.uemail = '{email}'""")           
+            query = f"""
+            select distinct o.*, m.mentee_email as seeker_id, concat(u.fname, " ", u.lname) as seeker_name
+            from summary_opportunity o
+            join apply ap on ap.opp_id = o.id
+            join associate ao on ao.opp_id = o.id
+            join mentor m on m.mentee_email = ap.semail
+            join user u on u.email = m.mentee_email
+            where m.mentor_email = '{email}' and (o.poster_email = '{email}' or ao.alemail = '{email}')
+            """
+
+            cursor.execute(query)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
     finally:  
             cursor.close()
 
 
-@app.route("/display/appliedOpp/<string:email>")
+@app.route("/opportunities/applied/<string:email>")
 def getAppliedOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as hosting_email, org.oname, org.olocation, a.uemail, u.fname, u.lname, u.uemail, count(distinct ao.alemail) as n_mentors, count(distinct st.semail) as n_seekers from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, user u where o.hosting_email = org.oemail and o.alemail = a.uemail and u.uemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and st.semail = '{email}'""")          
+            query = f"""
+            select o.* from summary_opportunity o
+            join apply ap on ap.opp_id = o.id
+            where ap.semail = '{email}'
+            """
+
+            cursor.execute(query)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
     finally:  
             cursor.close()
 
-@app.route("/display/matchedMentorOpp/<string:email>")
+@app.route("/opportunities/matchedMentor/<string:email>")
 def getMatchedMentorOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.hosting_email, o.name, org.oemail as org_email, org.oname, org.olocation, a.uemail, as.mentor_email as mentor_email, us.uname as mentor_name, u.uname, u.uemail from opportunity o, organization org, alumnus a, alum_associate_opp ao, stud_apply_oppr st, alum_mentor_stud as, user u, user us where o.hosting_email = org.oemail and o.alemail = a.uemail and ao.opp_id = o.email and st.opp_id = o.email and as.mentee_email = st.semail and as.mentee_email= u.uemail and u.uemail = '{email}'""")            
+            query =  f"""
+            select distinct o.*, m.mentor_email as mentor_id, concat(u.fname, " ", u.lname) as mentor_name
+            from summary_opportunity o
+            join apply ap on ap.opp_id = o.id
+            join associate ao on ao.opp_id = o.id
+            join mentor m on m.mentee_email = ap.semail
+            join user u on u.email = m.mentor_email
+            where m.mentee_email = '{email}' and ap.semail = '{email}' and m.status='ongoing'
+            """
+
+            cursor.execute(query)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
     finally:  
             cursor.close()
 
 
-@app.route("/set/applyOpp", methods=['POST'])
-def applyToOpportunity():
+
+@app.route("/opportunities")
+def getOpportunities():
     try:
+
+            content = request.args
+
+            match_search = [
+            "o.name like '%{}%'",
+            "ox.description like '%{}%'"
+            ]
+
+            where_list = []
+            join_segment = ""
+            sort_by = ""
+
+            if 'search' in content:
+                where_list.append(f"({' or '.join([x.format(content['search']) for x in match_search])})")
+
+            if 'uid' in content:
+                where_list.append(f"o.poster_email='{content['uid']}'")
+
+            if 'org_id' in content:
+                where_list.append(f"o.org_id='{content['org_id']}'")
+            
+            if 'field_id' in content:
+                where_list.append(f"ox.opp_field='{content['field_id']}'")
+
+            if 'start_after' in content:
+                where_list.append(f"ox.start_time>'{content['start_after']}'")
+
+            if 'end_before' in content:
+                where_list.append(f"ox.end_time<'{content['end_before']}'") 
+
+            if 'sort_by' in content:
+                if content['sort_by'] == 'compensation':
+                    sort_by = "order by comp_amount desc"
+                elif content['sort_by'] == 'seekers':
+                    sort_by = "order by o.n_seekers desc"
+                elif content['sort_by'] == "mentors":
+                    sort_by = "order by o.n_mentors desc"
+                elif content['sort_by'] == "deadline":
+                    sort_by = "order by app_deadline desc"
+
+            
+            where_segment = ""
+
+            if len(where_list):
+                where_segment = f"where {' and '.join(where_list)}"
+
             cursor = mysql.connection.cursor()
-            content = request.get_json()
-            uid = get(content,"uid")
-            opp_id = get(content,"oppid")
-            insert_user_cmd = f"""INSERT INTO stud_apply_oppr(semail, opp_id) 
-                                VALUES({uid}, {opp_id})"""
-            cursor.execute(insert_user_cmd)
-            mysql.connection.commit()
-            response = jsonify(
-                    message='User added successfully.'), 200
+            query =  f"""
+            
+            select  
+            o.id as id,
+            o.name as name,
+            o.org_id as org_id,
+            o.org_name as org_name,
+            o.location as location,
+            ox.end_time as end_date,
+            o.poster_email as poster_id,
+            o.poster_name as poster_name,
+            o.n_seekers as n_seekers,
+            o.n_mentors as n_mentors,
+            ox.start_time as start_date,
+            ox.app_deadline as deadline_date,
+            ox.comp_amount as compensation,
+            ox.comp_type as compensation_type,
+            ox.opp_field as field_id
+            from summary_opportunity o
+            right outer join opportunity ox on ox.id = o.id
+            {where_segment}
+            {sort_by}
+            """
+            cursor.execute(query)
+            rv = cursor.fetchall()
+
+            for opp in rv:
+                opp['benefits'] = []
+                cursor.execute(f"""select benefit
+                                    from benefits
+                                    where opp_id = '{opp['id']}'""")
+
+                resp = cursor.fetchall()
+
+                for acc in resp:
+                    opp['benefits'].append(acc["benefit"])
+
+            return jsonify(prepDict(rv)), 200
     except Exception as e:
             print(e)
-            response = jsonify('Failed to add user.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            return(response)
+            return jsonify(str(e)), 500
 
 
-@app.route("/delete/users/<string:email>/opp/<int:opp_id>", methods= ["DELETE"])
+@app.route("/opportunities/<int:opp_id>", methods=['GET', 'POST', 'PATCH', "DELETE"])
+def opportunity(opp_id):
+
+    if request.method == "GET":
+            cursor = mysql.connection.cursor()
+            query =  f"""
+            
+            select  
+            o.id as id,
+            o.name as name,
+            o.org_id as org_id,
+            o.org_name as org_name,
+            o.location as location,
+            ox.end_time as end_date,
+            o.poster_email as poster_id,
+            o.poster_name as poster_name,
+            o.n_seekers as n_seekers,
+            o.n_mentors as n_mentors,
+            ox.start_time as start_date,
+            ox.app_deadline as deadline_date,
+            ox.comp_amount as compensation,
+            ox.comp_type as compensation_type,
+            ox.opp_field as field_id,
+            ox.app_portal as application_portal_url,
+            ox.description as description
+            from summary_opportunity o
+            right outer join opportunity ox on ox.id = o.id
+            where ox.id = '{opp_id}'
+            """
+
+            cursor.execute(query)
+            rv = cursor.fetchone()
+
+            rv['benefits'] = []
+            cursor.execute(f"""select benefit
+                                from benefits
+                                where opp_id = '{rv['id']}'""")
+
+            resp = cursor.fetchall()
+
+            for acc in resp:
+                rv['benefits'].append(acc["benefit"])
+
+            return jsonify(prepDict(rv)), 200
+
+    elif request.method == "POST":
+            cursor = mysql.connection.cursor()
+            content = request.get_json()
+            query =  f"""
+
+                insert into opportunity (name, alemail, hosting_email, location, end_time, start_time, app_deadline, comp_amount, comp_type, opp_field, app_portal, description)
+                values('{content['name']}','{content['poster_id']}','{content['org_id']}',
+                '{content['location']}','{content['end_date']}','{content['start_date']}',
+                '{content['deadline_date']}','{content['compensation']}','{content['compensation_type']}',
+                '{content['field_id']}','{content['application_portal_url']}','{content['description']}')
+            
+            """
+            cursor.execute(query)
+            mysql.connection.commit()
+
+            cursor.execute(f"""select id from benefits order by id desc""")
+
+            latest = cursor.fetchone()
+        
+
+            if "benefits" in content:
+                    
+                    for i, acc in enumerate(content["benefits"]):
+                        cursor.execute(f"""INSERT INTO benefits (opp_id, benefit) 
+                                            values ('{latest['id']}', '{acc}')""")
+                        
+            mysql.connection.commit()
+
+            return jsonify('User added successfully.'), 200
+
+    elif request.method == "PATCH":
+            cursor = mysql.connection.cursor()
+            content = request.get_json()
+
+            query =  f"""
+            
+            select  
+            o.id as id,
+            o.name as name,
+            o.org_id as org_id,
+            o.org_name as org_name,
+            o.location as location,
+            ox.end_time as end_date,
+            o.poster_email as poster_id,
+            o.poster_name as poster_name,
+            o.n_seekers as n_seekers,
+            o.n_mentors as n_mentors,
+            ox.start_time as start_date,
+            ox.app_deadline as deadline_date,
+            ox.comp_amount as compensation,
+            ox.comp_type as compensation_type,
+            ox.opp_field as field_id,
+            ox.app_portal as application_portal_url
+            from summary_opportunity o
+            join opportunity ox on ox.id = o.id
+            where ox.id = '{opp_id}'
+            """
+
+            cursor.execute(query)
+            rv = cursor.fetchone()
+
+            name = get(content, 'name', rv)
+            poster_id = get(content, 'poster_id', rv)
+            org_id = get(content, 'org_id', rv)
+            location = get(content, 'location', rv)
+            end_date = get(content, 'end_date', rv)
+            start_date = get(content, 'start_date', rv)
+            deadline_date = get(content, 'deadline_date', rv)
+            compensation = get(content, 'compensation', rv)
+            compensation_type = get(content, 'compensation_type', rv)
+            field_id = get(content, 'field_id', rv)
+            application_portal_url = get(content, 'application_portal_url', rv)
+            description = get(content, 'description', rv)
+
+            query =  f"""
+
+                update opportunity set 
+                name='{name}', 
+                alemail='{poster_id}', 
+                hosting_email='{org_id}',
+                location='{location}', 
+                end_time='{end_date}', 
+                start_time='{start_date}', 
+                app_deadline='{deadline_date}', 
+                comp_amount='{compensation}', 
+                comp_type='{compensation_type}', 
+                opp_field='{field_id}', 
+                app_portal='{application_portal_url}', 
+                description='{description}'
+                where id = '{opp_id}'
+            """
+
+            cursor.execute(query)
+            mysql.connection.commit()
+
+            print(content)
+
+            if "benefits" in content:
+                    cursor.execute(f"""delete from benefits where opp_id='{opp_id}'""")
+                    print(f"""delete from benefits where opp_id='{opp_id}'""")
+                    mysql.connection.commit()
+
+                    for i, acc in enumerate(content["benefits"]):
+                        cursor.execute(f"""INSERT INTO benefits (opp_id, benefit) 
+                                            values ('{opp_id}', '{acc}')""")
+
+            mysql.connection.commit()
+            return jsonify('User added successfully.'), 200
+
+
+
+    else:
+            query =  f"""
+
+                    delete from opportunity
+                    where id = '{opp_id}'
+                """
+
+            cursor.execute(query)
+            mysql.connection.commit()
+            return jsonify('User added successfully.'), 200
+
+
+@app.route("/opportunities/<string:email>/apply/<int:opp_id>", methods=['POST'])
+def applyToOpportunity(email, opp_id):
+    try:
+            cursor = mysql.connection.cursor()
+            insert_user_cmd = f"""INSERT INTO apply(semail, opp_id) 
+                                VALUES('{email}', {opp_id})"""
+            cursor.execute(insert_user_cmd)
+            mysql.connection.commit()
+            return jsonify('User added successfully.'), 200
+    except Exception as e:
+            print(e)
+            return jsonify('Failed to add user.'), 400 
+
+
+@app.route("/opportunities/<string:email>/cancel/<string:opp_id>", methods= ["DELETE"])
 def cancelApplytoOpportunity(email, opp_id):
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""delete from stud_apply_oppr where semail = '{email}' and opp_id = '{opp_id}'""")
+            cursor.execute(f"""delete from apply where semail = '{email}' and opp_id = '{opp_id}'""")
             mysql.connection.commit()
             response = jsonify('User deleted successfully.')
             response.status_code = 200
@@ -1169,272 +1464,442 @@ def cancelApplytoOpportunity(email, opp_id):
             cursor.close()
             return(response)
 
-@app.route("/display/users/<string:email>/relationOpp/<int:opp_id>/rel/<string:rel>")
+
+def _getOpportunityRelation(email,opp_id):
+    cursor = mysql.connection.cursor()
+
+    cursor.execute(f"""
+        select * from 
+        ((select mentor_email, mentee_email, opp_id, status
+        from mentor
+        join associate ao on mentor_email = ao.alemail)
+        union
+        (select mentor_email, mentee_email, id, status
+        from mentor
+        join opportunity ao on mentor_email = ao.alemail)) Q
+        where mentor_email = '{email}' and opp_id = {opp_id} and Q.status='ongoing'
+    """)
+
+    rv = cursor.fetchone()
+
+    if rv:
+        return {
+                "rel": "matchedSeeker",
+                "uid": rv['mentee_email']
+            }
+    
+    
+    cursor.execute(f"""
+        select o.id
+        from opportunity o
+        join associate ao on ao.opp_id = o.id
+        where (o.alemail = '{email}' or ao.alemail = '{email}') and o.id = {opp_id}
+    """)
+
+    rv = cursor.fetchone()
+
+    if rv:
+        return {
+                "rel": "associated",
+                "uid": None
+            }
+
+    cursor.execute(f"""
+        select * from 
+        ((select mentor_email, mentee_email, opp_id, status
+        from mentor
+        join associate ao on mentor_email = ao.alemail)
+        union
+        (select mentor_email, mentee_email, id, status
+        from mentor
+        join opportunity ao on mentor_email = ao.alemail)) Q
+        where mentee_email = '{email}' and opp_id = {opp_id} and Q.status='ongoing'
+    """)
+
+    rv = cursor.fetchone()
+
+    if rv:
+        return {
+                "rel": "matchedMentor",
+                "uid": rv['mentor_email']
+            }
+    
+
+    cursor.execute(f"""
+        select o.id
+        from opportunity o
+        join apply ao on ao.opp_id = o.id
+        where ao.semail = '{email}' and o.id = {opp_id}
+    """)
+
+    rv = cursor.fetchone()
+
+    if rv:
+        return {
+                "rel": "applied",
+                "uid": None
+            }
+
+    return {
+                "rel": "no_rel",
+                "uid": None
+            }
+
+
+@app.route("/opportunities/<string:email>/rel/<int:opp_id>")
 def getOpportunityRelation(email,opp_id):
     try:
-            cursor = mysql.connection.cursor()
-            content = request.get_json()
-            rel = get(content, "rel")
-            if rel == "associated":
-                cursor.execute(f"""select ao.alemail, o.email from alum_associate_opp ao, opportunity o where ao.opp_id = o.email""")
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
-            elif rel == "matchedMentor":
-                cursor.execute(f"""select as.mentor_email, o.email from alum_associate_opp ao, alum_mentor_stud as , opportunity o where ao.opp_id = o.email and ao.alemail = as.mentor_email and as.mentor_email = '{email}'""")
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
-            elif rel =="matchedSeeker":
-                cursor.execute(f"""select o.email from stud_apply_oppr st , opportunity o where st.opp_id = o.email and st.semail = '{email}'""")
-                rv = cursor.fetchall(), 200
-                return jsonify(rv)
+            
+            return jsonify(_getOpportunityRelation(email, opp_id)), 200
+
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify(str(e)), 500
 
-@app.route("/display/oppBenefits/<string:email>")
+
+@app.route("/opportunities/<string:opp_id>/benefits", methods=['GET','POST', 'PATCH'])
 def getOpportunityBenefits(opp_id):
     try:
-            cursor = mysql.connection.cursor()
-            cursor.execute(f"""select opp_id, benefit from opp_comp_benefits where opp_id = '{opp_id}'""")           
-            rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            if request.method  == 'GET':
+                cursor = mysql.connection.cursor()
+                cursor.execute(f"""select opp_id, benefit from benefits where opp_id = '{opp_id}'""")           
+                rv = cursor.fetchall()
+                return jsonify(prepDict(rv)), 200
+            
+            if request.method == "POST":
+                cursor = mysql.connection.cursor()
+                content = request.get_json()
+                benefit = content["benefit"]
+                insert_user_cmd = f"""INSERT INTO benefits(opp_id, benefit) 
+                                    VALUES('{opp_id}', '{benefit}')"""
+                cursor.execute(insert_user_cmd)
+                mysql.connection.commit()
+                return jsonify("Success"), 200
+
+            if request.method == "PATCH":
+                cursor = mysql.connection.cursor()
+                content = request.get_json()
+
+                benefit = content["benefit"]
+                update_user_cmd = f"""update benefits
+                                    set benefit='{benefit}'
+                                    where opp_id= '{opp_id}' and benefit='{content['id']}'"""
+                
+                print(update_user_cmd)
+                cursor.execute(update_user_cmd)
+                mysql.connection.commit()
+
+                return jsonify("Success"), 200
+
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify(str(e)), 500
 
-@app.route("/set/oppBenefits/<int:opp_id>", methods=['GET','POST'])
-def addOpportunityBenefits(opp_id):
+
+@app.route("/opportunities/<string:opp_id>/benefits/delete", methods=['POST'])
+def deleteOpportunityBenefit(opp_id):
     try:
             cursor = mysql.connection.cursor()
-            content = request.get_json()
-            benefit = get(content, "benefit")
-            insert_user_cmd = f"""INSERT INTO opp_comp_benefits(opp_id, benefit) 
-                                VALUES('{opp_id}', '{benefit}')"""
-            cursor.execute(insert_user_cmd)
+            cursor.execute(f"""delete from opp_comp_benefits where opp_id = '{opp_id}' and benefit = '{request.get_json()['benefit']}'""")
             mysql.connection.commit()
-            response = jsonify(message='User added successfully.')
-            response.status_code = 200
+            return jsonify("Success"), 200
     except Exception as e:
             print(e)
-            response = jsonify('Failed to add user.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            return(response)
+            return jsonify(str(e)), 500
 
-@app.route("/edit/benefit/<int:opp_id>", methods=['GET','POST'])
-def editOpportunityBenefits(opp_id):
-    try:
-            cursor = mysql.connect.cursor()
-            content = request.get_json()
-            benefit = get(content, "benefit")
-            update_user_cmd = f"""update opp_comp_benefits
-                                 set benefit='{benefit}'
-                                 where opp_id= '{opp_id}'"""
-            cursor.execute(update_user_cmd)
-            mysql.connect.commit()
-            response = jsonify('User updated successfully.')
-            response.status_code = 200
-    except Exception as e:
-            print(e)
-            response = jsonify('Failed to add opp benefit.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            return(response)
-
-@app.route("/delete/opportunity/<int:opp_id>")
-def deleteOpportunityBenefit(opp_id,benefit):
-    try:
-            cursor = mysql.connection.cursor()
-            cursor.execute(f"""delete from opp_comp_benefits where opp_id = '{opp_id}' and benefit = '{benefit}'""")
-            mysql.connection.commit()
-            response = jsonify('User deleted successfully.')
-            response.status_code = 200
-    except Exception as e:
-            print(e)
-            response = jsonify('Failed to delete opp benefit.')         
-            response.status_code = 400
-    finally:
-            cursor.close() 
-            return(response)
-
-@app.route("/display/associate/<string:email>/opportunity/<int:opp_id>")
+@app.route("/opportunities/<string:email>/associate/<int:opp_id>", methods=['POST', 'DELETE'])
 def associateOpportunity(email,opp_id):
     try:
-            cursor = mysql.connect.cursor()
-            cursor.execute(f"""select alemail, opp_id from alum_associate_opp where alemail = '{email}' and opp_id = '{opp_id}'""")            
-            rv = cursor.fetchall()
-            return jsonify(rv), 200
+
+            if request.method== 'POST':
+                cursor = mysql.connection.cursor()
+                cursor.execute(f"""insert into associate(alemail, opp_id) values ('{email}', '{opp_id}') """)            
+                mysql.connection.commit()
+                return jsonify("Success"), 200
+            else:
+                cursor = mysql.connection.cursor()
+                cursor.execute(f"""delete from associate where alemail='{email}' and opp_id= '{opp_id}'""")            
+                mysql.connection.commit()
+                return jsonify("Success"), 200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
 
-@app.route("/set/match/opp/<int:opp_id>/mentor/<string:mentor_email>/seeker/<string:seeker_email>", methods=['GET','POST'])
+@app.route("/opportunities/<int:opp_id>/<string:mentor_email>/mentor/<string:seeker_email>", methods=['POST'])
 def matchMentoring(mentor_email, seeker_email, opp_id):
     try:
+            #aaliyah.brooks@gmail.com
+            #ariana.reyes@gmail.com
+
+
+            relMentor = _getOpportunityRelation(mentor_email, opp_id)
+            relSeeker = _getOpportunityRelation(seeker_email, opp_id)
+            
+            if not (relMentor['rel'] == "associated" and relSeeker['rel'] == "applied"):
+                return jsonify("cannot mentor"), 403
+
             cursor = mysql.connection.cursor()
-            insert_user_cmd = f"""INSERT INTO alum_associate_opp(alemail, opp_id) 
-                                VALUES('{seeker_email}', '{opp_id}') and insert into stud_apply_oppr(semail, opp_id) 
-                                VALUES('{mentor_email}','{opp_id}')"""
+            
+            cursor.execute(f"""
+                delete from mentor 
+                where mentor_email = '{mentor_email}' and mentee_email='{seeker_email}'
+            """)
+
+            mysql.connection.commit()
+
+            insert_user_cmd = f"""INSERT INTO mentor (mentor_email,mentee_email, status, start_date, rating) 
+                                VALUES('{mentor_email}', '{seeker_email}', 'ongoing', '{date.today().strftime('%Y-%m-%d')}', 0) 
+                                """
+            
             cursor.execute(insert_user_cmd)
             mysql.connection.commit()
-            response = jsonify(message='User added successfully.', id=cursor.lastrowid)
-            update_user_cmd = f"""update alum_mentor_stud
-                                 set status="ongoing"
-                                 where mentor_email = '{mentor_email}' and mentee_email ='{seeker_email}'"""
-            cursor.execute(update_user_cmd)
-            mysql.connection.commit()
-            response.status_code = 200
+
+            return jsonify("Success"), 200
+            
     except Exception as e:
             print(e)
-            response = jsonify('Failed to add match.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            return(response)
+            return jsonify(str(e)), 500
 
-@app.route("/delete/mentoringOpp/<int:opp_id>/mentor/<string:mentor_email>/seeker/<string:seeker_email>", methods=['GET','POST'])
+
+@app.route("/opportunities/<int:opp_id>/<string:mentor_email>/finishMentoring/<string:seeker_email>", methods=['POST'])
 def finishMentoring(opp_id, mentor_email, seeker_email):
     try:
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            content = request.get_json()
-            rating = get(content, "rating")
-            delete_user_cmd = f"""delete from stud_apply_oppr s where s.semail = '{seeker_email}' and s.opp_id = '{opp_id}'"""
-            cursor.execute(delete_user_cmd)
-            update_user_cmd = f"""update alum_mentor_stud
-                                 set rating='{rating}', status="done"
-                                 where mentor_email='{mentor_email}' and mentee_email='{seeker_email}'"""
-            cursor.execute(update_user_cmd)
-            conn.commit()
-            response = jsonify('Updated successfully.')
-            response.status_code = 200
-    except Exception as e:
-            print(e)
-            response = jsonify('Failed to do task.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            conn.close()
-            return(response)
-
-@app.route("/set/message/<string:email>", methods=['GET','POST'])
-def sendMessage(email):
-    try:
-            cursor = mysql.connect.cursor()
-            content = request.get_json()
-            other_id = get(content,"other_id")
-            message = get(content,"message")
-            insert_user_cmd = f"""INSERT INTO message(sender_email, receiver_email, content) 
-                                VALUES('{email}', '{other_id}', '{message}')"""
-            cursor.execute(insert_user_cmd)
-            mysql.connect.commit()
-            response = jsonify(message='Message added successfully.', id=cursor.lastrowid)
-            response.status_code = 200
-    except Exception as e:
-            print(e)
-            response = jsonify('Failed to add message.')         
-            response.status_code = 400 
-    finally:
-            cursor.close()
-            return(response)
-
-@app.route("/display/messageSender/<string:email>/Receiver/<string:other_id>")
-def getMessages(email, other_id):
-    try:
+            
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select content from message where sender_email = '{email}' and receiver_email = '{other_id}'""")
-            rv = cursor.fetchall()
-            return jsonify(rv)
+            content = request.get_json()
+            rating = content["rating"]
+            print(content)
+            update_user_cmd = f"""update mentor
+                                 set rating='{rating}', status="finished"
+                                 where mentor_email='{mentor_email}' and mentee_email='{seeker_email}' and status='ongoing'"""
+            cursor.execute(update_user_cmd)
+            mysql.connection.commit()
+            return jsonify("Success"), 200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify("Error"), 500
+
+@app.route("/opportunities/<int:opp_id>/<string:mentor_email>/cancelMentoring/<string:seeker_email>", methods=['POST'])
+def cancelMentoring(opp_id, mentor_email, seeker_email):
+    try:
+            
+            cursor = mysql.connection.cursor()
+
+            update_user_cmd = f"""update mentor
+                                 set status="canceled"
+                                 where mentor_email='{mentor_email}' and mentee_email='{seeker_email}' and status='ongoing'"""
+            
+            print(update_user_cmd)
+            
+            cursor.execute(update_user_cmd)
+            mysql.connection.commit()
+            return jsonify("Success"), 200
+    except Exception as e:
+            print(e)
+            return jsonify("Error"), 500
+
+@app.route("/messages/<string:sender>/message/<string:receiver>", methods=['GET','POST'])
+def message(sender, receiver):
+    try:
+
+            if request.method == "POST":
+                cursor = mysql.connection.cursor()
+                content = request.get_json()
+                message = content['message']
+                insert_user_cmd = f"""INSERT INTO message(sender_email, receiver_email, content, timestamp) 
+                                    VALUES('{sender}', '{receiver}', '{message}', '{(str(datetime.now()))}')"""
+
+                print(insert_user_cmd)
+                cursor.execute(insert_user_cmd)
+                mysql.connection.commit()
+                return jsonify("Success"), 200
+
+            if request.method == "GET":
+
+                cursor = mysql.connection.cursor()
+                insert_user_cmd = f"""select * from message where 
+                (sender_email = '{sender}' and receiver_email = '{receiver}') or
+                (sender_email = '{receiver}' and receiver_email = '{sender}')
+                order by timestamp asc """
+                cursor.execute(insert_user_cmd)
+
+                rv = cursor.fetchall()
+
+                messages = []
+
+                for message in rv:
+
+                    if message['sender_email'] == sender:
+                        messages.append({
+                            'type':'sent',
+                            'message': message['content'],
+                            'timestamp': message['timestamp']
+                        })
+                    
+                    else:
+                        messages.append({
+                            'type':'received',
+                            'message': message['content'],
+                            'timestamp': message['timestamp']
+                        })
+
+                return jsonify(messages), 200
+                
+    except Exception as e:
+            raise(e)
+            
 
 
-@app.route("/display/users")
+@app.route("/users")
 def getUsers():
     try:
+
+            query = request.args
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select full_name, uemail from user""")
+
+            where_list = []
+            if 'search' in query:
+                where_list.append("concat(fname, \" \", lname) like '%"+query['search']+"%'")
+
+        
+            if 'type' in query:
+
+                if query['type'] == "M":
+                    where_list.append("email in (select uemail from alumnus)")
+
+                else:
+                    where_list.append("email in (select uemail from student)")
+            
+            where_segment = ""
+
+            if len(where_list):
+                where_segment = "where "+" and ".join(where_list)
+
+            x = f"""select concat(fname, \' \', lname) as name, email as id 
+            from user
+            {where_segment}
+            order by fname, lname
+            """
+            print(x)
+            cursor.execute(x)
             rv = cursor.fetchall()
-            return jsonify(rv),200
+            return jsonify(prepDict(rv)),200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify(str(e)),500
 
-@app.route("/display/mentors/")
-def getMentors():
+@app.route("/mentors/<int:opp_id>")
+def getMentors(opp_id):
+    
     try:
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select u.uname, a.mentor_email from alum_mentor_stud a, user u where a.mentor_email=u.uemail""")
+            cursor.execute(f"""(select concat(fname, " ", lname) as name, email as id, avg(m.rating) as score 
+                                from associate
+                                join user on alemail = email
+                                left join mentor m on mentor_email = alemail
+                                where opp_id = '{opp_id}'
+                                group by email)
+                               union
+                               (
+                                select concat(fname, " ", lname) as name, email as id, avg(m.rating) as score 
+                                from opportunity o
+                                join user on alemail = email
+                                left join mentor m on mentor_email = alemail
+                                where o.id = '{opp_id}'
+                                group by email
+                               )""")
             rv = cursor.fetchall()
-            return jsonify(rv)
+            return jsonify(prepDict(rv)),200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify(str(e)),500
 
 
-@app.route("/display/seekersOpp/<int:opp_id>")
+@app.route("/seekers/<int:opp_id>")
 def getSeekers(opp_id):
     try:
+            query = request.args
+
+            where_segment = f"where ao.opp_id='{opp_id}'"
+
+            if 'pending' in query:
+                where_segment += f""" and user.email not in (
+                        select distinct mentee_email 
+                        from mentor 
+                        join associate ac on ac.alemail = mentor_email
+                        where ac.opp_id = '{opp_id}' and (status='ongoing' or status='finished')
+                    )
+                    """
+
             cursor = mysql.connection.cursor()
-            cursor.execute(f"""select o.id, a.alemail from stud_apply_oppr s, opportunity o, alum_associate_opp a where a.opp_id = o.id and s.opp_id = o.id and o.id='{opp_id}'""")
+            cursor.execute(f"""select distinct concat(fname, " ", lname) as name, email as id 
+                               from user
+                               join apply ao on ao.semail = user.email
+                                {where_segment}
+                               """)
             rv = cursor.fetchall()
-            return jsonify(rv), 200
+            return jsonify(prepDict(rv)),200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
+            return jsonify(str(e)),500
 
-@app.route("/display/mentoringMentors/<string:email>")
+@app.route("/mentoringMentors/<string:email>")
 def getMentoringmentors(email):
     try:
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            content = request.get_json()
-            opp_id = get(content, "opp_id")
-            if opp_id == NULL: 
-                cursor.execute(f"""select a.mentor_email, u.uname from alum_mentor_stud a, user u where a.mentor_email = u.uemail and a.mentee_email = '{email}'""")
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
-            else:
-                cursor.execute(f"""select a.alemail, u.uname from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.id and s.opp_id = o.id and u.uemail = a.alemail and s.semail='{email}' and o.id='{opp_id}'""")            
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
+            query = request.args
+
+            where = ""
+            if 'opp_id' in query:
+                opp_id = query['opp_id']
+                where = f""" and m.mentor_email in (
+                        (select alemail from associate where opp_id = '{opp_id}')
+                        union
+                        (select alemail from opportunity where id  = '{opp_id}')
+                    )
+                    """
+
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select distinct concat(fname, " ", lname) as name, email as id 
+                               from user
+                               join mentor m on m.mentor_email = user.email
+                               where m.mentee_email = '{email}' and status= 'ongoing' {where}
+                               """)
+            
+            rv = cursor.fetchall()
+            return jsonify(prepDict(rv)),200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
-            conn.close()
+            return jsonify(str(e)),500
 
 
-@app.route("/display/mentoredSeekers/")
+@app.route("/mentoredSeekers/<string:email>")
 def getMentoredSeekers(email):
     try:
-            conn = mysql.connect()
-            cursor = conn.cursor()
-            content = request.get_json()
-            opp_id = get(content,"opp_id")
-            if opp_id == pymysql.NULL: 
-                cursor.execute(f"""select a.mentee_email, u.uname from alum_mentor_stud a, user u where a.mentee_email = u.uemail and a.mentor_email = '{email}'""")
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
-            else:
-                cursor.execute(f"""select s.semail, u.uname from stud_apply_oppr s, opportunity o, alum_associate_opp a, user u where a.opp_id = o.id and s.opp_id = o.id and u.uemail = s.semail and a.alemail='{email}' and o.id='{opp_id}'""")                
-                rv = cursor.fetchall()
-                return jsonify(rv), 200
+            query = request.args
+
+            where = ""
+            if 'opp_id' in query:
+                opp_id = query['opp_id']
+                where = f""" and m.mentee_email in (
+                        select semail from apply where opp_id = '{opp_id}'
+                    )
+                    """
+
+            
+            cursor = mysql.connection.cursor()
+            cursor.execute(f"""select distinct concat(fname, " ", lname) as name, email as id 
+                               from user
+                               join mentor m on m.mentee_email = user.email
+                               where m.mentor_email = '{email}' and status='ongoing' {where}
+                               """)
+            
+            rv = cursor.fetchall()
+            return jsonify(prepDict(rv)),200
     except Exception as e:
             print(e)
-    finally:  
-            cursor.close()
-            conn.close()
+            return jsonify(str(e)),500
+
 
 
 app.run(debug=True)
