@@ -1041,12 +1041,17 @@ def organization(oemail):
             return jsonify("Added"),200
 
         if request.method == "DELETE":
-            cursor = mysql.connection.cursor()
-            insert_user_cmd = """delete from organization where oemail='{}'"""
-            cursor.execute(insert_user_cmd.format(oemail))
-            mysql.connection.commit()
 
-            return jsonify('deleted'), 200
+            try:
+                cursor = mysql.connection.cursor()
+                insert_user_cmd = """delete from organization where oemail='{}'"""
+                cursor.execute(insert_user_cmd.format(oemail))
+                mysql.connection.commit()
+
+                return jsonify('deleted'), 200
+
+            except MySQLdb._exceptions.IntegrityError as e:
+                return jsonify('Linked'), 405
 
     except Exception as e:
         raise(e)
@@ -1058,7 +1063,7 @@ def organizationNames():
     try:
         
         cursor = mysql.connection.cursor()
-        cursor.execute("select oemail as org_id, oname as org_name from Organization_name order by oname")
+        cursor.execute("select oemail as org_id, oname as org_name, is_educational from Organization_name order by oname")
         rows = cursor.fetchall()
         return jsonify(rows), 200
     except Exception as e:
@@ -1073,7 +1078,7 @@ def getPostedOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
             query = f"""
-            select o.* from summary_opportunity o
+            select o.*, ox.app_deadline as deadline_date from summary_opportunity o join opportunity ox on o.id = ox.id
             where o.poster_email = '{email}'
             """
 
@@ -1091,7 +1096,7 @@ def getAssociateOpportunities(email):
     try:
             cursor = mysql.connection.cursor()
             query = f"""
-            select o.*, ao.alemail from summary_opportunity o
+            select o.*, ao.alemail from summary_opportunity o 
             join associate ao on ao.opp_id = o.id
             where ao.alemail = '{email}'
             """
@@ -1136,7 +1141,9 @@ def getAppliedOpportunities(email):
             query = f"""
             select o.* from summary_opportunity o
             join apply ap on ap.opp_id = o.id
-            where ap.semail = '{email}'
+            left outer join associate ao on ao.opp_id = o.id
+            left outer join mentor m on m.mentee_email = ap.semail
+            where ap.semail = '{email}' and (m.mentor_email = null or m.status != 'ongoing')
             """
 
             cursor.execute(query)
@@ -1187,12 +1194,17 @@ def getOpportunities():
             where_list = []
             join_segment = ""
             sort_by = ""
+            apply_join = ""
 
             if 'search' in content:
                 where_list.append(f"({' or '.join([x.format(content['search']) for x in match_search])})")
 
             if 'uid' in content:
                 where_list.append(f"o.poster_email='{content['uid']}'")
+
+            if 'not_applied' in content:
+                where_list.append(f"(a.semail != '{content['not_applied']}' or a.semail is null)")
+                apply_join = "left outer join apply a on a.opp_id = o.id"
 
             if 'org_id' in content:
                 where_list.append(f"o.org_id='{content['org_id']}'")
@@ -1243,9 +1255,11 @@ def getOpportunities():
             ox.opp_field as field_id
             from summary_opportunity o
             right outer join opportunity ox on ox.id = o.id
+            {apply_join}
             {where_segment}
             {sort_by}
             """
+            print(query)
             cursor.execute(query)
             rv = cursor.fetchall()
 
@@ -1326,7 +1340,7 @@ def opportunity(opp_id):
             cursor.execute(query)
             mysql.connection.commit()
 
-            cursor.execute(f"""select id from benefits order by id desc""")
+            cursor.execute(f"""select id from opportunity order by id desc""")
 
             latest = cursor.fetchone()
         
@@ -1423,6 +1437,7 @@ def opportunity(opp_id):
 
 
     else:
+            cursor = mysql.connection.cursor()
             query =  f"""
 
                     delete from opportunity
@@ -1902,4 +1917,4 @@ def getMentoredSeekers(email):
 
 
 
-app.run(debug=True)
+app.run(debug=True, host='0.0.0.0')

@@ -1,18 +1,22 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import api from "../../../../api";
 import { Card } from "../../../../components/Card";
 import { ListView } from "../../../../components/ListView";
+import { UserContext } from "../../../../Context";
 import { OpportunityListItem } from "../opportunities/Opportunities";
 
 export default function DetailsOrganization(props){
 
     const [data, setData] = useState({})
     const [opps, setOpps] = useState([])
+    const userContext = useContext(UserContext)
     useEffect(()=>{
+        console.log(data)
         if(!("id" in data)){
             api.getOrganization(props.id, setData);
-            api.getOpportunities({
-                org_id: data.id
+            api.getOpportunities(null, {
+                org_id: props.id,
+                not_applied: userContext
             }, setOpps)
         }
     }, [data])

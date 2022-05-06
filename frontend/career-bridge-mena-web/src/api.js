@@ -19,7 +19,7 @@ export default {
             }
         )
         .catch(res=>{
-             
+            alert("Failed to login")
             onFail()
         })
         .then(res=>{
@@ -33,7 +33,7 @@ export default {
             API_BASE+"users/"+uid,
         )
         .then(res=>{
-             
+            
             onSuccess?.(res.data)
         })
         .catch(()=>{
@@ -64,16 +64,18 @@ export default {
 
     signup: async (info, onSuccess = null, onFail = null)=>{
          
-
         axios.post(
             API_BASE+"users/"+info.email,
             info
         )
         .catch(res=>{
-             
+            console.error(res)
+            alert("Failed to signup")
             onFail?.()
         })
         .then(res=>{
+
+            console.log(res)
              
 
             if(info.is_seeker){
@@ -221,7 +223,9 @@ export default {
         
         axios.delete(
             API_BASE+"users/"+uid+"/education/"+program.id
-        )
+        ).catch(()=>{
+            alert("Cannot delete education")
+        })
         //program id
     },
 
@@ -262,7 +266,9 @@ export default {
     deleteExperience: async (uid, experience, onSuccess=null, onFail=null)=>{
         axios.delete(
             API_BASE+"mentors/"+uid+"/experience/"+experience.id
-        )
+        ).catch(()=>{
+            alert("Cannot delete experience")
+        })
     },
 
     getProjects: async (uid, onSuccess=null, onFail=null)=>{
@@ -291,7 +297,9 @@ export default {
 
         axios.delete(
             API_BASE+"seekers/"+uid+"/projects/delete/"+project.date
-        )
+        ).catch(()=>{
+            alert("Cannot delete project")
+        })
     },
     getCertifications: async (uid, onSuccess=null, onFail=null)=>{
         axios.get(
@@ -480,6 +488,9 @@ export default {
             }
         )
         .then(onSuccess)
+        .catch(()=>{
+            alert("Cannot delete field")
+        })
     },
 
     getOrganizations: async (query, onSuccess=null, onFail=null)=>{
@@ -568,6 +579,9 @@ export default {
             API_BASE+"organizations/"+id
         )
         .then(onSuccess)
+        .catch(()=>{
+            alert("Cannot delete organization")
+        })
     },
     
 
@@ -641,6 +655,7 @@ export default {
         //          - "seekers" sort by descending seeker number
         //          - "mentors" sort by descending mentor number
         //          - "deadline" sort by deadline 
+        //not_applied: user id of student not applying to following opps
 
         // return those that the seeker -if user is seeker- did not apply to
 
@@ -655,7 +670,6 @@ export default {
             delete data.name
         }
 
-        console.log(data)
         axios.get(
             API_BASE+"opportunities",
             {
@@ -663,6 +677,7 @@ export default {
             }
         )
         .then(res=>{
+            console.log(res.data)
             onSuccess(res.data)
         })
 

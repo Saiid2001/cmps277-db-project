@@ -97,6 +97,7 @@ export function ProfileInfoContent(props) {
         api.setUser( formProps);
     }
 
+    console.log(user.gender)
      
 
     return <div className="info">
@@ -108,9 +109,9 @@ export function ProfileInfoContent(props) {
                 <label htmlFor="birth_date">Birth-date</label>
                 <input type={"date"} id="birth_date" name={"birth_date"} placeholder={"Birth date"} required {...!props.edit ? { "disabled": true } : ""} defaultValue={user.birth_date}></input>
                 {user.gender?<div className="gender">
-                    <input type="radio" id="gender-m" name="gender" value="M" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Male"}></input>
+                    <input type="radio" id="gender-m" name="gender" value="Male" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Male"}></input>
                     <label htmlFor="gender-m">Male</label>
-                    <input type="radio" id="gender-f" name="gender" value="F" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Female"}></input>
+                    <input type="radio" id="gender-f" name="gender" value="Female" {...!props.edit ? { "disabled": true } : ""} defaultChecked={user.gender == "Female"}></input>
                     <label htmlFor="gender-f">Female</label>
                 </div>:null}
             </section>
@@ -133,7 +134,7 @@ export function MentorPositionContent(props) {
     const [data, setData] = useState({});
     const orgs = useContext(OrganizationsContext);
     const [selectedOrg, setSelectedOrg] = useState("");
-
+    const [saved, setSaved] = useState(false);
 
 
     useEffect(() => {
@@ -142,9 +143,17 @@ export function MentorPositionContent(props) {
         }
     });
 
-    if (props.save && !props.edit) {
-        document.querySelector("#mentor-info-form button").click();
-    }
+    useEffect(() => {
+        if(!props.edit && !props.save && selectedOrg != data.org_id && selectedOrg!= ""){
+            setSelectedOrg("");
+        }
+
+        if (props.save && !props.edit) {
+            document.querySelector("#mentor-info-form button").click();
+        }
+    }, [props.edit])
+
+    
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -157,7 +166,11 @@ export function MentorPositionContent(props) {
         else
             formProps.org_id = data.org_id;
 
+        let d = {...data}
+        d.org_id = formProps.org_id
+        setData(d)
         api.setCurrentPosition(contextUser, formProps);
+        setSaved(true);
     }
 
     function onSelectChange(val, act) {
@@ -171,9 +184,9 @@ export function MentorPositionContent(props) {
 
     if (orgs.length && typeof(orgs) == typeof([1,2])){
     if ("position" in data) {
-        url = <a href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == data.org_id).org_name}</a>;
+        console.log(selectedOrg)
+        url = <a href={"/organizations/details/" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == data.org_id).org_name}</a>;
     }
-
      opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
     }
     return <section className="mentor-info">
@@ -183,7 +196,7 @@ export function MentorPositionContent(props) {
                 <h3>Current Position</h3>
                 <input type={"text"} name={"position"} placeholder={"Position"} {...!props.edit ? { "disabled": true } : ""} defaultValue={data.position}></input>
                 <p>at</p>
-                {props.edit ? (
+                {props.edit && data.org_id? (
                     <Select
                         options={opts}
                         onChange={onSelectChange}
@@ -279,10 +292,10 @@ export function EducationRecord(props) {
     if(orgs.length){
 
     if ("org_id" in props.data) {
-        url = <a className="university" href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == props.data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == props.data.org_id).org_name}</a>;
+        url = <a className="university" href={"/organizations/details/" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == props.data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == props.data.org_id).org_name}</a>;
     }
 
-    opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
+    opts = orgs.filter(x=> x.is_educational).map(org => { return { 'value': org.org_id, "label": org.org_name }; });
     }
 
     function onSelectChange(val, act) {
@@ -388,9 +401,10 @@ export function ExperienceRecord(props) {
 
         formProps.id = props.data.id? props.data.id: 0;
 
-        api.setExperience(contextUser, formProps);
 
-        if(formProps.id == 0) window.location.reload();
+        api.setExperience(contextUser, formProps, ()=>{
+            if(formProps.id == 0) window.location.reload();
+        });
 
     }
 
@@ -401,8 +415,9 @@ export function ExperienceRecord(props) {
 
     if(orgs.length){
     if ("org_id" in props.data || props.data.type == "new") {
-        url = <a className="university" href={"/organizations?id=" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : orgs.find(x => x.org_id == props.data.org_id).org_id)}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : orgs.find(x => x.org_id == props.data.org_id).org_name}</a>;
-        console.log(selectedOrg)
+        console.log( selectedOrg)
+        url = <a className="university" href={"/organizations/details/" + (selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_id : props.data.type!="new"?orgs.find(x => x.org_id == props.data.org_id).org_id:"")}>{selectedOrg != "" ? orgs.find(x => x.org_id == selectedOrg).org_name : props.data.type != "new"?
+        orgs.find(x => x.org_id == props.data.org_id).org_name:""}</a>;
     }
     //select
      opts = orgs.map(org => { return { 'value': org.org_id, "label": org.org_name }; });
@@ -552,7 +567,7 @@ export function CertificationRecord(props) {
     }
 
     function saveChildren() {
-        document.querySelector(`#project-info-${props.id}-form .submit`).click();
+        document.querySelector(`#certification-info-${props.id}-form .submit`).click();
         setShouldSave(true);
         setIsEditing(false);
     }
@@ -564,7 +579,7 @@ export function CertificationRecord(props) {
 
     return <div className="education_records">
 
-        <form id={`project-info-${props.id}-form`} onSubmit={handleSubmit}>
+        <form id={`certification-info-${props.id}-form`} onSubmit={handleSubmit}>
             <div className="flexer">
                 <input type={"text"} name={"name"} className={"major"} placeholder={"Certification Name"} required {...!isEditing ? { "disabled": true } : ""} defaultValue={props.data.name}></input>
                 <p className="date"><input type={"date"} name={"date"} placeholder={"date"} required {...!isEditing ? { "disabled": true } : ""} defaultValue={props.data.date}></input></p>

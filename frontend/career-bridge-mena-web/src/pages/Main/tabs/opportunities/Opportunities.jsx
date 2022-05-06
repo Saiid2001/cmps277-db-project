@@ -338,6 +338,7 @@ function SummaryOpportunityListItem(props){
         window.dispatchEvent(new CustomEvent("open-messages", {detail:{other: other}}))
     }
 
+    console.log(props.data)
     return <div className="list-item">
 
         <div className="upper">

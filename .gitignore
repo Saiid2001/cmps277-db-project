@@ -5,3 +5,4 @@ backend/cmps277(1)/.env
 backend/.env
 database/__pycache__
 backend/flask_session
+frontend/career-bridge-mena-web/flask_session

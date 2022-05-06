@@ -15,7 +15,7 @@ Create Table Organization(
 );
 
 CREATE VIEW Organization_Name As
-    SELECT oemail, oname from Organization;
+    SELECT oemail, oname, is_educational from Organization;
 
 Create unique index org_name on Organization (oname);
 

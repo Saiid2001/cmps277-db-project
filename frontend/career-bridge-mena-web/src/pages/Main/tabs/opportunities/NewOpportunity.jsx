@@ -64,8 +64,6 @@ export default function NewOpportunity(props){
         }
     }
 
-
-     console.log(data)
     return (
         <form id="new-field" className="add-entity-form" onSubmit={handleSubmit}>
             {props.edit?<h1>Edit Opportunity</h1>:<h1>New Opportunity</h1>}
@@ -75,14 +73,14 @@ export default function NewOpportunity(props){
             <textarea name="description"  placeholder="Opportunity description ... " defaultValue={data.description}>
             </textarea>
             <label>Field</label>
-            {!props.edit || data.field_id ?<Select
+            {((!props.edit || data.field_id != "") && allFields.length>0)?<Select
                     options={allFields.map(x=>{return {value: x.id, label:x.name}})}
                     onChange={onFieldsSelectChange}
                     defaultValue={allFields.filter(x=> x.id == data.field_id).map(x=>{return {value: x.id, label:x.name}})[0]}
                     required
                     placeholder={"Fields"} />:null}
             <label>Organization</label>
-            {!props.edit || data.org_id?<Select
+            {((!props.edit || data.org_id != "") && allOrgs.length)?<Select
                     options={allOrgs.map(x=>{return {value: x.org_id, label:x.org_name}})}
                     onChange={onOrgsSelectChange}
                     defaultValue={allOrgs.filter(x=> x.org_id == data.org_id).map(x=>{return {value: x.org_id, label:x.org_name}})[0]}
