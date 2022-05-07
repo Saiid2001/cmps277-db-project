@@ -19,6 +19,8 @@ import Users from "./tabs/profile/Users"
 import Select from "react-select"
 import { type } from "@testing-library/user-event/dist/type"
 
+import { ReactSession } from 'react-client-session';
+
 export const UserDataContext = React.createContext("user-data")
 export const OrganizationsContext = React.createContext('orgs')
 
@@ -125,6 +127,11 @@ export default function Main(props){
             break;
     }
 
+    function handleLogout(){
+        ReactSession.remove('user')
+        window.location = "";
+    }
+
     if (orgs.length)
     return <div className="main">
     
@@ -135,6 +142,7 @@ export default function Main(props){
             <div className="username">
                 <h3>{user.first_name} {user.last_name}</h3>
                 <img src={avatar}></img>
+                <button onClick={handleLogout}>Logout</button>
             </div>
 
         </header>
